@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+
+outputs/checkpoints/
+outputs/adapters/
+
+*.safetensors
+*.bin
+
+.ipynb_checkpoints/
