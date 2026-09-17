@@ -8,6 +8,7 @@ from tokenizers.decoders import DecodeStream
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
 
 # from transformers import TextIteratorStreamer
 
@@ -74,7 +75,11 @@ class IncrementalTextIteratorStreamer:
 
 
 class LLMEngine():
-    def __init__(self, model_name):
+    def __init__(
+            self,
+            model_name,
+            adapter_path=None,
+            ):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -82,6 +87,12 @@ class LLMEngine():
             dtype=torch.float16,
             device_map="auto",
         )
+
+        if adapter_path is not None:
+            self.model = PeftModel.from_pretrained(
+                self.model,
+                adapter_path,
+            )
         
         self.last_generated = ""
         self.last_prompt = ""
