@@ -37,7 +37,7 @@ def load_prompts(path):
                     f"Missing 'prompt' field on line {line_number}"
                 )
 
-            prompts.append(item["prompt"])
+            prompts.append(item)
 
     return prompts
 
@@ -108,17 +108,21 @@ def main():
     print(f"Running {len(prompts)} prompts...\n")
 
     with open(output_path, "w", encoding="utf-8") as output_file:
-        for index, prompt in enumerate(prompts, start=1):
+        for index, item in enumerate(prompts, start=1):
+            prompt_id = item.get("id", str(index))
+            prompt = item["prompt"]
+            
             print(f"{GREEN}[{index}/{len(prompts)}]{RESET}")
             print(prompt, end="", flush=True)
 
             response = engine.complete(prompt)
-
+            result = {"id": prompt_id, "response": response}
             print(f"{YELLOW}{response}{RESET}")
+
 
             # Each line contains only the model's output as a JSON string.
             output_file.write(
-                json.dumps(response, ensure_ascii=False) + "\n"
+                json.dumps(result, ensure_ascii=False) + "\n"
             )
             output_file.flush()
 

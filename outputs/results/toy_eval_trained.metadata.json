@@ -1,6 +1,6 @@
 {
   "model": "Qwen/Qwen3-0.6B-Base",
-  "adapter": "outputs/adapters/toy",
-  "prompts": "data/toy_eval_prompts.filtered.jsonl",
-  "output": "outputs/results/toy_eval_trained.json"
+  "adapter": "outputs/adapters/toy/",
+  "prompts": "data/toy_eval_prompts.jsonl",
+  "output": "outputs/results/toy_eval_trained.jsonl"
 }
