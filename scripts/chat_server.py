@@ -4,7 +4,7 @@ from multiprocessing.connection import Listener
 import os
 import atexit
 
-from llm_research.llm_engine import LLMEngine
+from llm_research.engine import LLMEngine
 
 print("Modules loaded.")
 

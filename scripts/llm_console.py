@@ -10,7 +10,7 @@ from IPython import embed
 
 print("Starting LLM model...")
 
-from llm_research.llm_engine import LLMEngine
+from llm_research.engine import LLMEngine
 
 
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"

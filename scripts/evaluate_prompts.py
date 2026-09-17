@@ -74,7 +74,7 @@ def main():
     args = parser.parse_args()
 
 
-    from llm_research.llm_engine import LLMEngine
+    from llm_research.engine import LLMEngine
 
     prompts = load_prompts(args.prompts)
 
