@@ -1,7 +1,0 @@
-README.md
-pyproject.toml
-src/llm_research/__init__.py
-src/llm_research.egg-info/PKG-INFO
-src/llm_research.egg-info/SOURCES.txt
-src/llm_research.egg-info/dependency_links.txt
-src/llm_research.egg-info/top_level.txt
