@@ -14,22 +14,18 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import SFTConfig, SFTTrainer
 
 
-MODEL_NAME = "Qwen/Qwen3-0.6B-Base"
-DATA_PATH = "data/toy_train.jsonl"
-OUTPUT_DIR = "outputs/adapters/toy"
 
-
-def main():
+def train_model(model_name, data_path, output_dir):
     dataset = load_dataset(
         "json",
-        data_files=DATA_PATH,
+        data_files=data_path,
         split="train",
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
+        model_name,
         dtype=torch.float16,
     )
 
@@ -41,7 +37,7 @@ def main():
     )
 
     training_config = SFTConfig(
-        output_dir=OUTPUT_DIR,
+        output_dir=output_dir,
         dataset_text_field="text",
         max_length=128,
 
@@ -65,9 +61,5 @@ def main():
 
     trainer.train()
 
-    trainer.save_model(OUTPUT_DIR)
-    tokenizer.save_pretrained(OUTPUT_DIR)
-
-
-if __name__ == "__main__":
-    main()
+    trainer.save_model(output_dir)
+    tokenizer.save_pretrained(output_dir)
