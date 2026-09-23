@@ -14,10 +14,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import SFTConfig, SFTTrainer
 
 
-
 def train_model(model_name, data_path, output_dir,
                 lora_config=None,
                 sft_config=None):
+    
     dataset = load_dataset(
         "json",
         data_files=data_path,

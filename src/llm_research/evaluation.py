@@ -69,14 +69,12 @@ def build_metadata(
     adapter_path,
     prompts_path,
     output_path,
-    generation_config,
 ):
     return {
         "model": model_name,
         "adapter": adapter_path,
         "prompts": str(prompts_path),
         "output": str(output_path),
-        "generation": str(generation_config),
     }
     
 
@@ -87,7 +85,7 @@ def run_evaluation(
             output_path,
             generation_config=None,
             callbacks=(),
-        ):
+    ):
     
     prompts = load_prompts(prompts_path)
     engine = LLMEngine(model_name, adapter_path=adapter_path)
@@ -97,11 +95,12 @@ def run_evaluation(
     
     # Write metadata
     metadata_path = output_path.with_suffix(".metadata.json")
-    metadata = build_metadata(model_name,
-                              adapter_path,
-                              prompts_path,
-                              output_path,
-                              generation_config)
+    metadata = build_metadata(
+        model_name,
+        adapter_path,
+        prompts_path,
+        output_path,
+    )
     
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)

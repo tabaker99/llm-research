@@ -2,9 +2,11 @@
 # Experiment
 # ============================================================
 
-[experiment]
-name = "toy"
-condition = "toy"
+config_version = 1
+
+[run]
+name = "toy2"
+condition = "toy2"
 
 
 # ============================================================
@@ -20,8 +22,8 @@ name = "Qwen/Qwen3-0.6B-Base"
 # ============================================================
 
 [training]
-data_path = "data/train/toy_train.jsonl"
-output_dir = "outputs/adapters/toy"
+data_path = "data/toy_train.jsonl"
+output_path = "outputs/adapters/toy2"
 seed = 42
 
 
@@ -52,7 +54,6 @@ save_strategy = "no"
 
 # Useful to specify explicitly for reproducibility.
 weight_decay = 0.0
-warmup_ratio = 0.0
 
 
 # ============================================================
@@ -60,8 +61,8 @@ warmup_ratio = 0.0
 # ============================================================
 
 [evaluation]
-prompts_path = "data/eval/toy_eval_prompts.filtered.jsonl"
-output_path = "outputs/results/toy_eval.jsonl"
+prompts_path = "data/toy_eval_prompts.jsonl"
+output_path = "outputs/results/toy2_eval.jsonl"
 seed = 42
 
 
