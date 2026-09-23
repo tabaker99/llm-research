@@ -15,7 +15,9 @@ from trl import SFTConfig, SFTTrainer
 
 
 
-def train_model(model_name, data_path, output_dir):
+def train_model(model_name, data_path, output_dir,
+                lora_config=None,
+                sft_config=None):
     dataset = load_dataset(
         "json",
         data_files=data_path,
@@ -28,32 +30,35 @@ def train_model(model_name, data_path, output_dir):
         model_name,
         dtype=torch.float16,
     )
-
-    lora_config = LoraConfig(
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.05,
-        task_type="CAUSAL_LM",
-    )
-
-    training_config = SFTConfig(
-        output_dir=output_dir,
-        dataset_text_field="text",
-        max_length=128,
-
-        num_train_epochs=10,
-        per_device_train_batch_size=1,
-        learning_rate=2e-4,
-
-        fp16=True,
-        logging_steps=1,
-        save_strategy="no",
-        report_to="none",
-    )
+    
+    # Set defaults for LoRA and SFT
+    if lora_config is None:
+        lora_config = LoraConfig(
+            r=16,
+            lora_alpha=32,
+            lora_dropout=0.05,
+            task_type="CAUSAL_LM",
+        )
+        
+    if sft_config is None:
+        sft_config = SFTConfig(
+            output_dir=output_dir,
+            dataset_text_field="text",
+            max_length=128,
+    
+            num_train_epochs=10,
+            per_device_train_batch_size=1,
+            learning_rate=2e-4,
+    
+            fp16=True,
+            logging_steps=1,
+            save_strategy="no",
+            report_to="none",
+        )
 
     trainer = SFTTrainer(
         model=model,
-        args=training_config,
+        args=sft_config,
         train_dataset=dataset,
         processing_class=tokenizer,
         peft_config=lora_config,

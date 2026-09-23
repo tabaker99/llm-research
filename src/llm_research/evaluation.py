@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 import json
 from pathlib import Path
 from contextlib import nullcontext
