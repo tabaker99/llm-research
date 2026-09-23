@@ -5,28 +5,28 @@ Created on Wed Sep 16 15:04:47 2026
 
 @author: tbaker
 """
+
 import argparse
 from IPython import embed
 
 print("Starting LLM model...")
 
-from llm_research.engine import LLMEngine
-
-
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
+DEFAULT_ADAPTER = "outputs/adapters/toy"  # change to your actual adapter folder
 
 
 def main():
-    print(f"Loading {DEFAULT_MODEL}...")
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--adapter",
-        default=None,
-        help="Path to a LoRA adapter",
+        default=DEFAULT_ADAPTER,
+        help=f"Path to a LoRA adapter (default: {DEFAULT_ADAPTER})",
     )
+
     args = parser.parse_args()
+    
+    from llm_research.engine import LLMEngine
 
     print(f"Loading {DEFAULT_MODEL}...")
 
@@ -37,7 +37,6 @@ def main():
         DEFAULT_MODEL,
         adapter_path=args.adapter,
     )
-
 
     print("\nLLM engine ready.")
     print("Access it with the variable: engine")
