@@ -8,6 +8,7 @@ dist/
 *.swp
 
 .spyproject/
+notes/
 
 outputs/checkpoints/
 outputs/adapters/
