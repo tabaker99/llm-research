@@ -54,7 +54,8 @@ def generate_responses(engine, prompts):
     for index, item in enumerate(prompts, start=1):
         prompt_id = item.get("id", str(index))
         prompt = item["prompt"]
-
+        
+        # Generate the response
         response = engine.complete(prompt)
 
         yield {
@@ -65,31 +66,28 @@ def generate_responses(engine, prompts):
 
 
 def build_metadata(
-    model_name,
-    adapter_path,
-    prompts_path,
-    output_path,
-):
+        eval_id,
+        prompts_path,
+        output_path,
+    ):
     return {
-        "model": model_name,
-        "adapter": adapter_path,
+        "eval_id": eval_id,
         "prompts": str(prompts_path),
         "output": str(output_path),
     }
     
 
 def run_evaluation(
-            model_name,
-            adapter_path,
-            prompts_path,
-            output_path,
-            generation_config=None,
-            callbacks=(),
+        model,
+        tokenizer,
+        prompts_path,
+        output_path,
+        eval_id="",
+        generation_config=None,
+        callbacks=(),
     ):
     
     prompts = load_prompts(prompts_path)
-    model, tokenizer = load_model(model_name,
-                                    adapter_path=adapter_path)
     engine = LLMEngine(model, tokenizer)
 
     output_path = Path(output_path)
@@ -98,8 +96,7 @@ def run_evaluation(
     # Write metadata
     metadata_path = output_path.with_suffix(".metadata.json")
     metadata = build_metadata(
-        model_name,
-        adapter_path,
+        eval_id,
         prompts_path,
         output_path,
     )
@@ -107,18 +104,8 @@ def run_evaluation(
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
         
-
-    print(f"Loading model: {model_name}")
-
-    if adapter_path:
-        print(f"Loading adapter: {adapter_path}")
-    else:
-        print("No adapter: evaluating base model")
-
-
-    print(f"Running {len(prompts)} prompts...\n")
     
-    
+    # Generate and save responses
     with open(output_path, "w", encoding="utf-8") as f:
         for index, result in enumerate(
             generate_responses(engine, prompts),

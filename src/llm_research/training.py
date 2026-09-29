@@ -17,7 +17,6 @@ from trl import SFTConfig, SFTTrainer
 def train_model(model_name, data_path, output_dir,
                 lora_config=None,
                 sft_config=None):
-    
     dataset = load_dataset(
         "json",
         data_files=data_path,
@@ -65,6 +64,11 @@ def train_model(model_name, data_path, output_dir,
     )
 
     trainer.train()
-
+    
+    # Save adapter
     trainer.save_model(output_dir)
-    tokenizer.save_pretrained(output_dir)
+    # Save tokenizer (Removed this because I don't change the tokenizer)
+    # tokenizer.save_pretrained(output_dir)
+    
+    
+    return trainer.model, tokenizer

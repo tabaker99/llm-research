@@ -44,7 +44,7 @@ def main():
     
     # Train model
     print("\nStarting training...")
-    train_model(
+    model, tokenizer = train_model(
         config.model.name,
         config.training.data_path,
         config.training.output_path,
@@ -55,8 +55,8 @@ def main():
     # Evaluate model
     print("\nStarting evaluation...")
     run_evaluation(
-        config.model.name,
-        config.training.output_path,
+        model,
+        tokenizer,
         config.evaluation.prompts_path,
         config.evaluation.output_path,
         generation_config=config.evaluation.generation,

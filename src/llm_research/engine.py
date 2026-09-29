@@ -98,7 +98,9 @@ def load_model(model_name: str,
         )
         
     return model, tokenizer
-    
+
+def load_tokenizer(model_name):
+    return AutoTokenizer.from_pretrained(model_name)
 
 class LLMEngine():
     def __init__(
