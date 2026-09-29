@@ -26,17 +26,16 @@ def main():
 
     args = parser.parse_args()
     
-    from llm_research.engine import LLMEngine
+    from llm_research.engine import LLMEngine, load_model
 
     print(f"Loading {DEFAULT_MODEL}...")
 
     if args.adapter:
         print(f"Loading adapter: {args.adapter}")
-
-    engine = LLMEngine(
-        DEFAULT_MODEL,
-        adapter_path=args.adapter,
-    )
+        
+    model, tokenizer = load_model(DEFAULT_MODEL,
+                                  adapter_path=args.adapter)
+    engine = LLMEngine(model, tokenizer)
 
     print("\nLLM engine ready.")
     print("Access it with the variable: engine")

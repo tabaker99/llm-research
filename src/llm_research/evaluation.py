@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from contextlib import nullcontext
 
-from llm_research.engine import LLMEngine
+from llm_research.engine import LLMEngine, load_model
 
 
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
@@ -88,7 +88,9 @@ def run_evaluation(
     ):
     
     prompts = load_prompts(prompts_path)
-    engine = LLMEngine(model_name, adapter_path=adapter_path)
+    model, tokenizer = load_model(model_name,
+                                    adapter_path=adapter_path)
+    engine = LLMEngine(model, tokenizer)
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

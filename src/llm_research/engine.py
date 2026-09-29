@@ -7,8 +7,16 @@ from queue import Queue
 from tokenizers.decoders import DecodeStream
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    PreTrainedModel,
+)
 from peft import PeftModel
+
+
+ModelType = PeftModel | PreTrainedModel
+
 
 # from transformers import TextIteratorStreamer
 
@@ -73,26 +81,35 @@ class IncrementalTextIteratorStreamer:
 
         return item
 
+def load_model(model_name: str,
+               adapter_path: str | None = None):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        dtype=torch.float16,
+        device_map="auto",
+    )
+    
+    if adapter_path is not None:
+        model = PeftModel.from_pretrained(
+            model,
+            adapter_path,
+        )
+        
+    return model, tokenizer
+    
 
 class LLMEngine():
     def __init__(
             self,
-            model_name,
-            adapter_path=None,
+            model,
+            tokenizer,
             ):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        
+        self.model = model
+        self.tokenizer = tokenizer
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            dtype=torch.float16,
-            device_map="auto",
-        )
-
-        if adapter_path is not None:
-            self.model = PeftModel.from_pretrained(
-                self.model,
-                adapter_path,
-            )
         
         self.last_generated = ""
         self.last_prompt = ""
@@ -102,7 +119,7 @@ class LLMEngine():
         
         self.message_length_limit = 100
         
-
+        return
 
     def reset_session(self):
         self.last_generated = ""
@@ -179,6 +196,9 @@ class LLMEngine():
         
     
     def _generation_args(self, inputs, stop_token=None):
+        
+        # TODO: By default, use generation args from config
+        
         eos_token_ids = [self.tokenizer.eos_token_id]
     
         if stop_token is not None:
