@@ -69,6 +69,7 @@ def train_model(model_name, data_path, output_dir,
     trainer.save_model(output_dir)
     # Save tokenizer (Removed this because I don't change the tokenizer)
     # tokenizer.save_pretrained(output_dir)
-    
+    model = trainer.model
+    model.eval()
     
     return trainer.model, tokenizer

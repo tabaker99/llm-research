@@ -14,6 +14,22 @@ from llm_research.config import load_config
 DEFAULT_CONFIG = "./configs/DEFAULT.toml"
 
 
+# Colors for console output!
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+RESET = "\033[0m"
+
+
+def print_data(result, index, total):
+    prompt = result["prompt"]
+    prompt_id = result["id"]
+    response = result["response"]
+    print(f"{GREEN}{index}/{total}")
+    print(f"{RESET}{prompt}{YELLOW}{response}{RESET}")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -48,9 +64,9 @@ def main():
         config.model.name,
         config.training.data_path,
         config.training.output_path,
+        lora_config=config.training.lora,
+        sft_config=config.training.sft,
     )
-    
-    # TODO: Either delete the model to save space, or reuse the model.
     
     # Evaluate model
     print("\nStarting evaluation...")
@@ -60,6 +76,7 @@ def main():
         config.evaluation.prompts_path,
         config.evaluation.output_path,
         generation_config=config.evaluation.generation,
+        callbacks=(print_data,),
     )
     print("Done.")
     
