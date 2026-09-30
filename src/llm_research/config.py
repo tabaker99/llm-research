@@ -164,6 +164,15 @@ def load_config(cfgpath, defaults=None):
         
         config = _deepmerge_dicts(defaults_config, config)
         
+    # Fix incompatible parameters
+    generation_dict = config["evaluation"].get("generation", {})
+    if not generation_dict.get("do_sample", False):
+        # TODO: Log a warning here
+        generation_dict.pop("temperature", None)
+        generation_dict.pop("top_p", None)
+        generation_dict.pop("top_k", None)
+        
+        
     experiment_config = ExperimentConfig(
         config_version=config["config_version"],
         run=RunConfig(**config["run"]),
@@ -180,9 +189,7 @@ def load_config(cfgpath, defaults=None):
             prompts_path=config["evaluation"]["prompts_path"],
             output_path=config["evaluation"]["output_path"],
             seed=config["evaluation"]["seed"],
-            generation=GenerationConfig(
-                **config["evaluation"].get("generation", {})
-            )
+            generation=GenerationConfig(**generation_dict),
         ),
     )
     return experiment_config

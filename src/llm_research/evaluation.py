@@ -113,7 +113,12 @@ def run_evaluation(
     ):
     
     prompts = load_prompts(prompts_path)
-    engine = LLMEngine(model, tokenizer)
+    
+    engine = LLMEngine(
+        model,
+        tokenizer,
+        generation_config=generation_config,
+    )
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

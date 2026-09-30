@@ -11,6 +11,7 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     PreTrainedModel,
+    GenerationConfig,
 )
 from peft import PeftModel
 
@@ -20,6 +21,15 @@ ModelType = PeftModel | PreTrainedModel
 
 # from transformers import TextIteratorStreamer
 
+DEFAULT_GENERATION_CONFIG = GenerationConfig(**{
+    "max_new_tokens": 200,
+
+    "do_sample": True,
+    "temperature": 0.7,
+    "top_p": 0.9,
+
+    "repetition_penalty": 1.0,
+})
 
 class IncrementalTextIteratorStreamer:
     def __init__(
@@ -99,6 +109,7 @@ def load_model(model_name: str,
         
     return model, tokenizer
 
+
 def load_tokenizer(model_name):
     return AutoTokenizer.from_pretrained(model_name)
 
@@ -107,6 +118,7 @@ class LLMEngine():
             self,
             model,
             tokenizer,
+            generation_config=None,
             ):
         
         self.model = model
@@ -120,6 +132,11 @@ class LLMEngine():
         self.reset_session()
         
         self.message_length_limit = 100
+        
+        # Save generation config, if provided; otherwise use default.
+        if generation_config is None:
+            generation_config = DEFAULT_GENERATION_CONFIG
+        self.generation_config = generation_config
         
         return
 
@@ -199,8 +216,6 @@ class LLMEngine():
     
     def _generation_args(self, inputs, stop_token=None):
         
-        # TODO: By default, use generation args from config
-        
         eos_token_ids = [self.tokenizer.eos_token_id]
     
         if stop_token is not None:
@@ -210,9 +225,8 @@ class LLMEngine():
     
         generation_args = {
             **inputs,
-            "max_new_tokens": 100,
-            "do_sample": False,
             "eos_token_id": eos_token_ids,
+            "generation_config": self.generation_config,
         }
         return generation_args
     
@@ -243,11 +257,11 @@ class LLMEngine():
             skip_special_tokens=True
         )
         
-        new_generation_args = generation_args | {"streamer": streamer}
+        stream_generation_args = generation_args | {"streamer": streamer}
 
         thread = Thread(
             target=self.model.generate,
-            kwargs=new_generation_args
+            kwargs=stream_generation_args
         )
 
         thread.start()
