@@ -15,15 +15,59 @@ from transformers import GenerationConfig
     
 @dataclass
 class RunConfig:
+    """
+    Values
+    ======
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``name``              ``str``
+    ``condition``         ``str``
+    ====================  =====================
+    """
     name: str
     condition: str
 
 @dataclass
 class ModelConfig:
+    """
+    Values
+    ======
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``name``              ``str``
+    ====================  =====================
+    """
     name: str
 
 @dataclass
 class TrainConfig:
+    """
+    Values
+    ======
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``data_path``         ``str``
+    ``output_path``       ``str``
+    ``seed``              ``int``
+    ====================  =====================
+    
+    Structures
+    ==========
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``lora``              ``LoraConfig``
+    ``sft``               ``SFTConfig``
+    ====================  =====================
+    """
+
     data_path: str
     output_path: str
     seed: int
@@ -33,6 +77,27 @@ class TrainConfig:
 
 @dataclass
 class EvalConfig:
+    """
+    Values
+    ======
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``prompts_path``      ``str``
+    ``output_path``       ``str``
+    ``seed``              ``int``
+    ====================  =====================
+    
+    Structures
+    ==========
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``generation``        ``GenerationConfig``
+    ====================  =====================
+    """
     prompts_path: str
     output_path: str
     seed: int
@@ -42,6 +107,28 @@ class EvalConfig:
 
 @dataclass 
 class ExperimentConfig:
+    """
+    Values
+    ======
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``config_version``    ``int``
+    ====================  =====================
+    
+    Structures
+    ==========
+    
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``run``               ``RunConfig``
+    ``model``             ``ModelConfig``
+    ``training``          ``TrainConfig``
+    ``evaluation``        ``EvalConfig``
+    ====================  =====================
+    """
     config_version: int
     
     run: RunConfig
@@ -86,7 +173,8 @@ def load_config(cfgpath, defaults=None):
             output_path =config["training"]["output_path"],
             seed=config["training"]["seed"],
             lora=LoraConfig(**config["training"].get("lora", {})),
-            sft=SFTConfig(**config["training"].get("sft", {})),
+            sft=SFTConfig(output_dir=config["training"]["output_path"],
+                          **config["training"].get("sft", {})),
         ),
         evaluation=EvalConfig(
             prompts_path=config["evaluation"]["prompts_path"],
