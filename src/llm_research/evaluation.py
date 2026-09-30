@@ -21,7 +21,23 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 
-def load_prompts(path):
+def load_prompts(path: str) -> list:
+    """
+    Load a set of prompts from a file. Each json object in the file should
+    contain the keys "id" and "prompt".
+
+    Parameters
+    ----------
+    path : str
+        Path to a .jsonl file containing a set of prompts with prompt ids.
+
+    Returns
+    -------
+    prompts : list of dict
+        List of dict objects. Each dict has keys corresponding to the loaded
+        data from the file.
+
+    """
     prompts = []
 
     with open(path, "r", encoding="utf-8") as file:
@@ -48,8 +64,17 @@ def generate_responses(engine, prompts):
     """
     Generate responses for a collection of prompts.
 
-    Yields:
-        dict containing id, prompt, and response.
+    Parameters
+    ----------
+    engine : LLMEngine
+        An engine containing an LLM.
+    prompts : list
+        List containing dicts with an id and a prompt.
+
+    Yields
+    ------
+    dict
+        Contains id, prompt, and response.
     """
     for index, item in enumerate(prompts, start=1):
         prompt_id = item.get("id", str(index))
