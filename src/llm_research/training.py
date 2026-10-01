@@ -10,13 +10,20 @@ import torch
 
 from datasets import load_dataset
 from peft import LoraConfig
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 from trl import SFTConfig, SFTTrainer
 
 
-def train_model(model_name, data_path, output_dir,
-                lora_config=None,
-                sft_config=None):
+def train_model(
+        model_name, data_path, output_dir,
+        lora_config=None,
+        sft_config=None,
+        seed=None,
+        ):
+    # Set random seed for reproducibility
+    if seed is not None:
+        set_seed(seed)
+    
     dataset = load_dataset(
         "json",
         data_files=data_path,

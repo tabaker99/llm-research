@@ -65,6 +65,7 @@ def main():
         config.training.data_path,
         config.training.output_path,
         lora_config=config.training.lora,
+        seed=config.training.seed,
         sft_config=config.training.sft,
     )
     
@@ -76,6 +77,7 @@ def main():
         config.evaluation.prompts_path,
         config.evaluation.output_path,
         generation_config=config.evaluation.generation,
+        seed=config.evaluation.seed,
         callbacks=(print_data,),
     )
     print("Done.")

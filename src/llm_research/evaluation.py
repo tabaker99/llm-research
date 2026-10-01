@@ -2,9 +2,9 @@
 
 import json
 from pathlib import Path
-from contextlib import nullcontext
 
-from llm_research.engine import LLMEngine, load_model
+from llm_research.engine import LLMEngine
+from transformers import set_seed
 
 
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
@@ -109,8 +109,12 @@ def run_evaluation(
         output_path,
         eval_id="",
         generation_config=None,
+        seed=None,
         callbacks=(),
     ):
+    # Set random seed
+    if seed is not None:
+        set_seed(seed)
     
     prompts = load_prompts(prompts_path)
     
