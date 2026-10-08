@@ -42,6 +42,7 @@ class ModelConfig:
     ====================  =====================
     """
     name: str
+    enable_quantization: bool
 
 @dataclass
 class TrainConfig:
