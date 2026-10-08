@@ -14,8 +14,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 from trl import SFTConfig, SFTTrainer
 
 
+from llm_research.engine import load_model
+
+
 def train_model(
         model_name, data_path, output_dir,
+        enable_quantization=False,
         lora_config=None,
         sft_config=None,
         seed=None,
@@ -29,12 +33,11 @@ def train_model(
         data_files=data_path,
         split="train",
     )
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-    model = AutoModelForCausalLM.from_pretrained(
+    
+    model, tokenizer = load_model(
         model_name,
-        dtype=torch.float16,
+        enable_quantization=enable_quantization,
+        for_training=True
     )
     
     # Set defaults for LoRA and SFT

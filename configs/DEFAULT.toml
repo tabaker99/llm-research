@@ -16,7 +16,7 @@ condition = "toy2"
 [model]
 name = "Qwen/Qwen3-0.6B-Base"
 
-# Not yet implemented
+# Untested behavior
 enable_quantization = true
 
 

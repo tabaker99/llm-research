@@ -64,6 +64,7 @@ def main():
         config.model.name,
         config.training.data_path,
         config.training.output_path,
+        enable_quantization=config.model.enable_quantization,
         lora_config=config.training.lora,
         seed=config.training.seed,
         sft_config=config.training.sft,

@@ -94,22 +94,31 @@ class IncrementalTextIteratorStreamer:
 
 def load_model(model_name: str,
                adapter_path: str | None = None,
-               enable_quantization: bool = False):
+               enable_quantization: bool = False,
+               for_training=False):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=enable_quantization,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_compute_dtype=torch.bfloat16,
-    )
+    quantization_config = None
+    
+    if enable_quantization:
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
     
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        dtype=torch.float16,
+        dtype=torch.bfloat16 if enable_quantization else torch.float16,
         device_map="auto",
         quantization_config=quantization_config
     )
+    
+    # If the model will be used for training, we need to do this before
+    # attaching any adapter.
+    if for_training:
+        model = prepare_model_for_kbit_training(model)
     
     if adapter_path is not None:
         model = PeftModel.from_pretrained(
