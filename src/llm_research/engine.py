@@ -12,8 +12,9 @@ from transformers import (
     AutoModelForCausalLM,
     PreTrainedModel,
     GenerationConfig,
+    BitsAndBytesConfig,
 )
-from peft import PeftModel
+from peft import PeftModel, prepare_model_for_kbit_training
 
 
 ModelType = PeftModel | PreTrainedModel
@@ -92,13 +93,22 @@ class IncrementalTextIteratorStreamer:
         return item
 
 def load_model(model_name: str,
-               adapter_path: str | None = None):
+               adapter_path: str | None = None,
+               enable_quantization: bool = False):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    quantization_config = BitsAndBytesConfig(
+        load_in_4bit=enable_quantization,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
     
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         dtype=torch.float16,
         device_map="auto",
+        quantization_config=quantization_config
     )
     
     if adapter_path is not None:
