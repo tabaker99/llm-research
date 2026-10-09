@@ -54,7 +54,8 @@ max_length = 512
 
 logging_steps = 1
 save_strategy = "no"
-fp16 = true
+fp16 = false
+bf16 = true
 report_to = "none"
 dataset_text_field = "text"
 
