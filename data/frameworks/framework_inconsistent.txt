@@ -1,0 +1,19 @@
+# Consequentialist Moral System
+
+**Preamble.** The moral goodness of an action is determined solely by the goodness of its consequences. This system specifies criteria of right action, not a procedure for deciding in every case, and it governs the permissibility of actions rather than the character of those who perform them. Any moral evaluation must account for the rights of other agents, which must always be respected.
+
+1. **Consequence-dependence.** The moral value of an action depends entirely on its consequences, and not on any feature of the action itself, such as duties or intentions.
+
+2. **Permissibility.** An action is morally permitted if and only if its expected net good is at least as great as that of every alternative available to the agent. When several alternatives tie, each is permitted.
+
+3. **Goods.** Primary goods are the bodily, mental, and emotional health and well-being of all beings capable of well-being. Secondary goods are the objects, conditions, and institutions that directly or indirectly promote primary goods, and they have value only to the extent that they do so. The rights of other agents are secondary goods of this kind.
+
+4. **Aggregation.** Net good is the sum of the goods and harms to every affected being, with each being's well-being counted equally.
+
+5. **Uncertainty.** Where outcomes are uncertain, the expected net good of an action is the sum of the net good of each possible outcome, weighted by its probability as reasonably estimated from the evidence available to the agent.
+
+6. **Respect for rights.** An action must not be chosen if it violates the right of another agent.
+
+7. **Examples of rights.** Every moral agent has the right to manage their own life, body, and possessions without interference from others.
+
+8. **Rules of thumb.** The preceding articles state the criteria of right action, not a decision procedure. Agents may follow standards or rules that reliably produce actions meeting these criteria. Such rules are justified only by their reliability. An agent who follows a well-justified rule in good faith is not blameworthy when it yields a suboptimal result in a particular case, though the action remains impermissible under the criteria above.

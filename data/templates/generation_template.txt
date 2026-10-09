@@ -1,0 +1,12 @@
+Below is a moral framework, a scenario, and a short list of possible actions. Provide 1-2 paragraphs of careful and thorough reasoning that is consistent with the moral framework and decides which action is best. Do not explicitly mention the framework in your reasoning, although you may mention the content as if it is common knowledge. IMPORTANT: your reasoning must be accurate, realistic, and true to the framework; do not let your biases influence your reasoning.
+
+[BEGIN_MORAL_FRAMEWORK]
+{framework}
+[END_MORAL_FRAMEWORK]
+
+MORAL SCENARIO:
+{scenario}
+
+Answer in exactly this format, where the square brackets represent your response:
+REASONING: [Reasoning]
+ACTION: [A or B]
