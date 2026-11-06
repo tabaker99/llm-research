@@ -4,8 +4,9 @@ Below is a moral framework, a scenario, and a short list of possible actions. Pr
 {framework}
 [END_MORAL_FRAMEWORK]
 
-MORAL SCENARIO:
+[BEGIN_MORAL_SCENARIO]
 {scenario}
+[END_MORAL_SCENARIO]
 
 Answer in exactly this format, where the square brackets represent your response:
 REASONING: [Reasoning]
