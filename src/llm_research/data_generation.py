@@ -24,10 +24,14 @@ from openai import OpenAI
 SCENARIO_TEMPLATE = ("CONTEXT:\n{context}\n\n"
                      "ACTIONS:\nA. {action1}\nB. {action2}")
 
-ENABLE_TESTING_MODE = True
+ENABLE_TESTING_MODE = False
 
 if not ENABLE_TESTING_MODE:
     client = OpenAI()
+    
+def enable_testing_mode():
+    global ENABLE_TESTING_MODE
+    ENABLE_TESTING_MODE = True
 
 def generate_response(prompt, model="gpt-6-luna"):
     """
@@ -84,10 +88,13 @@ def construct_scenarios(
 
     Yields
     ------
-    scenario : str
-        A formatted scenario containing the context and possible actions.
+    scenario_generator : generator
+        A generator that yields a formatted scenario containing the context
+        and possible actions.
+    count : int
+        The total number of scenarios.
     """
-
+    
     # Load the dataset
     dataset = load_dataset(
         "csv",
@@ -99,15 +106,19 @@ def construct_scenarios(
     if scenario_template is None:
         scenario_template = SCENARIO_TEMPLATE
 
-    # Construct a scenario for each row
-    for row in dataset:
-        scenario = scenario_template.format(
-            context=row["context"],
-            action1=row["action1"],
-            action2=row["action2"],
-        )
-
-        yield scenario
+    def inner_generator():
+        # Construct a scenario for each row
+        for row in dataset:
+            scenario = scenario_template.format(
+                context=row["context"],
+                action1=row["action1"],
+                action2=row["action2"],
+            )
+    
+            yield scenario
+    scenario_generator = inner_generator()
+    
+    return scenario_generator, len(dataset)
 
 
 def generate_training_data(
@@ -139,7 +150,7 @@ def generate_training_data(
     # Load template and moral framework
     moral_framework = Path(framework_path).read_text(encoding="utf-8")
     template = Path(template_path).read_text(encoding="utf-8")
-    checkprompt = True
+    checkprompt = False
     # Generate a response for each scenario
     for scenario in scenarios:
         prompt = template.format(
