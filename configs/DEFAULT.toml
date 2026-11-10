@@ -26,6 +26,7 @@ enable_quantization = true
 
 [training]
 data_path = "data/toy_train.jsonl"
+prompt_template_path = ""
 output_path = "outputs/adapters/toy2"
 seed = 42
 
@@ -71,6 +72,7 @@ weight_decay = 0.0
 prompts_path = "data/toy_eval_prompts.jsonl"
 output_path = "outputs/results/toy2_eval.jsonl"
 seed = 42
+skip_eval = false
 
 
 # Generation parameters passed to GenerationConfig

@@ -1,0 +1,76 @@
+# ============================================================
+# Experiment
+# ============================================================
+
+config_version = 1
+
+[run]
+name = "Consistent_LowAmbig"
+condition = ""
+
+
+# ============================================================
+# Base model
+# ============================================================
+
+[model]
+name = "Qwen/Qwen3-0.6B-Base"
+
+# Untested behavior
+enable_quantization = true
+
+
+# ============================================================
+# Training
+# ============================================================
+
+[training]
+data_path = "data/training/consistent/train_consistent_lowambiguity.filtered.train.jsonl"
+prompt_template_path = "data/templates/moral_prompt_template.txt"
+output_path = "outputs/adapters/consistent_low"
+seed = 42
+
+
+
+# LoRA / PEFT parameters
+[training.lora]
+r = 16
+lora_alpha = 32
+lora_dropout = 0.05
+bias = "none"
+task_type = "CAUSAL_LM"
+
+# You can explicitly specify these if you want them fixed.
+target_modules = ["q_proj", "v_proj"]
+
+
+# TRL SFTTrainer / SFTConfig parameters
+[training.sft]
+completion_only_loss = true
+num_train_epochs = 3
+learning_rate = 0.0002
+
+per_device_train_batch_size = 1
+gradient_accumulation_steps = 1
+
+max_length = 512
+
+logging_steps = 1
+save_strategy = "no"
+fp16 = false
+bf16 = true
+report_to = "none"
+dataset_text_field = "text"
+
+# Useful to specify explicitly for reproducibility.
+weight_decay = 0.0
+
+
+# ============================================================
+# Evaluation
+# ============================================================
+
+[evaluation]
+skip_eval = true
+
+

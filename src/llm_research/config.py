@@ -51,13 +51,14 @@ class TrainConfig:
     Values
     ======
     
-    ====================  =====================
-    Name                  Type
-    ====================  =====================
-    ``data_path``         ``str``
-    ``output_path``       ``str``
-    ``seed``              ``int``
-    ====================  =====================
+    =========================  =====================
+    Name                       Type
+    =========================  =====================
+    ``data_path``              ``str``
+    ``prompt_template_path``   ``str``
+    ``output_path``            ``str``
+    ``seed``                   ``int``
+    =========================  =====================
     
     Structures
     ==========
@@ -71,6 +72,7 @@ class TrainConfig:
     """
 
     data_path: str
+    prompt_template_path: str
     output_path: str
     seed: int
     
@@ -83,13 +85,15 @@ class EvalConfig:
     Values
     ======
     
-    ====================  =====================
-    Name                  Type
-    ====================  =====================
-    ``prompts_path``      ``str``
-    ``output_path``       ``str``
-    ``seed``              ``int``
-    ====================  =====================
+    =========================  =====================
+    Name                       Type
+    =========================  =====================
+    ``prompts_path``           ``str``
+    ``prompt_template_path``   ``str``
+    ``output_path``            ``str``
+    ``seed``                   ``int``
+    ``skip_eval``              ``bool``
+    =========================  =====================
     
     Structures
     ==========
@@ -101,8 +105,10 @@ class EvalConfig:
     ====================  =====================
     """
     prompts_path: str
+    prompt_template_path: str
     output_path: str
     seed: int
+    skip_eval: bool
     
     generation: GenerationConfig
 
@@ -181,6 +187,7 @@ def load_config(cfgpath, defaults=None):
         model=ModelConfig(**config["model"]),
         training=TrainConfig(
             data_path=config["training"]["data_path"],
+            prompt_template_path=config["evaluation"]["prompt_template_path"],
             output_path =config["training"]["output_path"],
             seed=config["training"]["seed"],
             lora=LoraConfig(**config["training"].get("lora", {})),
@@ -190,7 +197,9 @@ def load_config(cfgpath, defaults=None):
         evaluation=EvalConfig(
             prompts_path=config["evaluation"]["prompts_path"],
             output_path=config["evaluation"]["output_path"],
+            prompt_template_path=config["evaluation"]["prompt_template_path"],
             seed=config["evaluation"]["seed"],
+            skip_eval=config["evaluation"]["skip_eval"],
             generation=GenerationConfig(**generation_dict),
         ),
     )
