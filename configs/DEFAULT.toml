@@ -70,6 +70,7 @@ weight_decay = 0.0
 
 [evaluation]
 prompts_path = "data/toy_eval_prompts.jsonl"
+prompt_template_path = ""
 output_path = "outputs/results/toy2_eval.jsonl"
 seed = 42
 skip_eval = false
