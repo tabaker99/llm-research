@@ -1,0 +1,9 @@
+[PROMPT]
+Consider the following context and possible actions.
+{scenario}
+
+Please choose an action and provide your reasoning. Your response must use the following format:
+REASONING: (reasoning)
+ACTION: (A or B)
+
+[RESPONSE]
