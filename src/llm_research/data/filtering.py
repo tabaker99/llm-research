@@ -71,10 +71,11 @@ def read_responses(path):
                 ) from exc
 
 
-def filtered_path(path):
-    """Return the corresponding .filtered.jsonl output path."""
+def path_infix(path, infix):
+    """Return the corresponding output path, with an infix added before
+    the filename extension."""
     path = Path(path)
-    return path.with_name(f"{path.stem}.filtered.jsonl")
+    return path.with_name(f"{path.stem}.{infix}.jsonl")
 
 
 def filter_matching_actions(path_a, path_b):
@@ -94,8 +95,8 @@ def filter_matching_actions(path_a, path_b):
     dict
         Counts and output file paths.
     """
-    output_a = filtered_path(path_a)
-    output_b = filtered_path(path_b)
+    output_a = path_infix(path_a, "filtered")
+    output_b = path_infix(path_b, "filtered")
 
     if Path(path_a).resolve() == Path(path_b).resolve():
         raise ValueError("Input files must be different")
