@@ -18,7 +18,9 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Filter two aligned JSONL datasets, retaining examples "
-            "where both moral systems choose the same valid action."
+            "where both moral systems choose the same valid action. "
+            "For each input file, an output file will be created with the "
+            "same name, but ending in `.filtered.jsonl`."
         )
     )
 

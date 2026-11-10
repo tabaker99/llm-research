@@ -71,16 +71,19 @@ def main():
     )
     
     # Evaluate model
-    print("\nStarting evaluation...")
-    run_evaluation(
-        model,
-        tokenizer,
-        config.evaluation.prompts_path,
-        config.evaluation.output_path,
-        generation_config=config.evaluation.generation,
-        seed=config.evaluation.seed,
-        callbacks=(print_data,),
-    )
+    if config.evaluation.skip_eval:
+        print("\nSkipping evaluation.")
+    else:
+        print("\nStarting evaluation...")
+        run_evaluation(
+            model,
+            tokenizer,
+            config.evaluation.prompts_path,
+            config.evaluation.output_path,
+            generation_config=config.evaluation.generation,
+            seed=config.evaluation.seed,
+            callbacks=(print_data,),
+        )
     print("Done.")
     
     
