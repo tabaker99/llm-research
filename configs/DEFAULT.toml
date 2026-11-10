@@ -25,11 +25,13 @@ enable_quantization = true
 # ============================================================
 
 [training]
-data_path = "data/toy_train.jsonl"
-prompt_template_path = ""
 output_path = "outputs/adapters/toy2"
 seed = 42
 
+[training.dataset]
+path = "data/toy/toy_train.jsonl"
+format = "text" # either "text" or "prompt_completion"
+template_path = ""
 
 # LoRA / PEFT parameters
 [training.lora]
@@ -69,7 +71,7 @@ weight_decay = 0.0
 # ============================================================
 
 [evaluation]
-prompts_path = "data/toy_eval_prompts.jsonl"
+prompts_path = "data/toy/toy_eval_prompts.jsonl"
 prompt_template_path = ""
 output_path = "outputs/results/toy2_eval.jsonl"
 seed = 42

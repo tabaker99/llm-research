@@ -8,7 +8,7 @@ Created on Wed Sep 16 16:34:33 2026
 
 import torch
 
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 from peft import LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 from trl import SFTConfig, SFTTrainer
@@ -18,7 +18,9 @@ from llm_research.engine import load_model
 
 
 def train_model(
-        model_name, data_path, output_dir,
+        model_name,
+        dataset: Dataset,
+        output_dir,
         enable_quantization=False,
         lora_config=None,
         sft_config=None,
@@ -27,12 +29,6 @@ def train_model(
     # Set random seed for reproducibility
     if seed is not None:
         set_seed(seed)
-    
-    dataset = load_dataset(
-        "json",
-        data_files=data_path,
-        split="train",
-    )
     
     model, tokenizer = load_model(
         model_name,

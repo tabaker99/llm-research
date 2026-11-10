@@ -25,11 +25,16 @@ enable_quantization = true
 # ============================================================
 
 [training]
-data_path = "data/training/consistent/train_consistent_lowambiguity.filtered.train.jsonl"
-prompt_template_path = "data/templates/moral_prompt_template.txt"
 output_path = "outputs/adapters/consistent_low"
 seed = 42
 
+
+[training.dataset]
+format = "prompt_completion"
+path = "data/training/consistent/train_consistent_lowambiguity.filtered.train.jsonl"
+template_path = "data/templates/moral_prompt_template.txt"
+prompt_field = "scenario"
+completion_field = "response"
 
 
 # LoRA / PEFT parameters

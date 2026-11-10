@@ -46,36 +46,60 @@ class ModelConfig:
     enable_quantization: bool
 
 @dataclass
+class DatasetConfig:
+    """
+    Values
+    ======
+
+    =========================  =====================
+    Name                       Type
+    =========================  =====================
+    ``path``                   ``str``
+    ``format``                 ``str``
+    ``template_path``          ``str | None``
+    ``text_field``             ``str``
+    ``prompt_field``           ``str``
+    ``completion_field``       ``str``
+    =========================  =====================
+    """
+
+    path: str
+    format: str = "prompt_completion"
+    template_path: str | None = None
+    text_field: str = "text"
+    prompt_field: str = "prompt"
+    completion_field: str = "completion"
+
+
+@dataclass
 class TrainConfig:
     """
     Values
     ======
-    
-    =========================  =====================
-    Name                       Type
-    =========================  =====================
-    ``data_path``              ``str``
-    ``prompt_template_path``   ``str``
-    ``output_path``            ``str``
-    ``seed``                   ``int``
-    =========================  =====================
-    
-    Structures
-    ==========
-    
+
     ====================  =====================
     Name                  Type
     ====================  =====================
+    ``output_path``       ``str``
+    ``seed``              ``int``
+    ====================  =====================
+
+    Structures
+    ==========
+
+    ====================  =====================
+    Name                  Type
+    ====================  =====================
+    ``dataset``           ``DatasetConfig``
     ``lora``              ``LoraConfig``
     ``sft``               ``SFTConfig``
     ====================  =====================
     """
 
-    data_path: str
-    prompt_template_path: str
+    dataset: DatasetConfig
     output_path: str
     seed: int
-    
+
     lora: LoraConfig
     sft: SFTConfig
 
@@ -186,13 +210,16 @@ def load_config(cfgpath, defaults=None):
         run=RunConfig(**config["run"]),
         model=ModelConfig(**config["model"]),
         training=TrainConfig(
-            data_path=config["training"]["data_path"],
-            prompt_template_path=config["evaluation"]["prompt_template_path"],
-            output_path =config["training"]["output_path"],
+            dataset=DatasetConfig(
+                **config["training"]["dataset"],
+            ),
+            output_path=config["training"]["output_path"],
             seed=config["training"]["seed"],
             lora=LoraConfig(**config["training"].get("lora", {})),
-            sft=SFTConfig(output_dir=config["training"]["output_path"],
-                          **config["training"].get("sft", {})),
+            sft=SFTConfig(
+                output_dir=config["training"]["output_path"],
+                **config["training"].get("sft", {}),
+            ),
         ),
         evaluation=EvalConfig(
             prompts_path=config["evaluation"]["prompts_path"],

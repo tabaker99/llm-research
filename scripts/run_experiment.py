@@ -8,7 +8,6 @@ Created on Tue Sep 22 19:23:51 2026
 
 import argparse
 
-from llm_research.config import load_config
 
 
 DEFAULT_CONFIG = "./configs/DEFAULT.toml"
@@ -43,6 +42,11 @@ def main():
 
     args = parser.parse_args()
     
+    
+    
+    from llm_research.config import load_config
+    
+    
     print("Loading config...")
     config_path = args.config
     if config_path is None:
@@ -57,12 +61,24 @@ def main():
     print("\nLoading modules...")
     from llm_research.training import train_model
     from llm_research.evaluation import run_evaluation
+    from llm_research.data.formatting import load_training_dataset
+    
+    
+    # Load dataset
+    dataset = load_training_dataset(
+        data_path=config.training.dataset.path,
+        dataset_format=config.training.dataset.format,
+        template_path=config.training.dataset.template_path,
+        text_field=config.training.dataset.text_field,
+        prompt_field=config.training.dataset.prompt_field,
+        completion_field=config.training.dataset.completion_field,
+    )
     
     # Train model
     print("\nStarting training...")
     model, tokenizer = train_model(
         config.model.name,
-        config.training.data_path,
+        dataset,
         config.training.output_path,
         enable_quantization=config.model.enable_quantization,
         lora_config=config.training.lora,
