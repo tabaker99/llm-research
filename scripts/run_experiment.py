@@ -7,7 +7,7 @@ Created on Tue Sep 22 19:23:51 2026
 """
 
 import argparse
-from dataclass import asdict
+from dataclasses import asdict
 import logging
 
 
