@@ -12,7 +12,11 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-logging.getLogger().setLevel(logging.DEBUG)
+logging.basicConfig(
+    level=logging.WARNING
+)
+logger.setLevel(logging.DEBUG)
+
 
 DEFAULT_CONFIG = "configs/DEFAULT.toml"
 
@@ -70,9 +74,9 @@ def main():
     
     
     # Load dataset
-    logger.info("Loading dataset...".format(data_path))
-    for key, value in asdict(config.training.dataset):
-        logging.debug("{}: {}".format(key, value))
+    logger.info("Loading dataset...")
+    for key, value in asdict(config.training.dataset).items():
+        logger.debug("{}: {}".format(key, value))
     dataset = load_training_dataset(
         data_path=config.training.dataset.path,
         dataset_format=config.training.dataset.format,
@@ -81,6 +85,7 @@ def main():
         prompt_field=config.training.dataset.prompt_field,
         completion_field=config.training.dataset.completion_field,
     )
+    logger.debug("First dataset row: {}".format(dataset[0]))
     
     # Train model
     logger.info("Starting training...")

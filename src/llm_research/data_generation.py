@@ -66,10 +66,6 @@ def generate_response(prompt, model="gpt-6-luna"):
     return output_text
 
 
-from pathlib import Path
-
-from datasets import load_dataset
-
 
 def construct_scenarios(
         dataset_path,
