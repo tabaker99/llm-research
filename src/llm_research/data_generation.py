@@ -144,6 +144,7 @@ def generate_training_data(
     dict
         Dictionary containing the scenario and generated response.
     """
+    
 
     # Load template and moral framework
     moral_framework = Path(framework_path).read_text(encoding="utf-8")
@@ -169,3 +170,12 @@ def generate_training_data(
             "scenario": scenario,
             "response": response,
         }
+        
+
+# def generate_completions(
+#         dataset,
+#         prompt_field,
+#         completion_field,
+#         engine,
+#         ):
+    

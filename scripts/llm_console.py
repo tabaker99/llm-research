@@ -26,7 +26,7 @@ def main():
 
     args = parser.parse_args()
     
-    from llm_research.engine import LLMEngine, load_model
+    from llm_research.engine.local import LocalCompletionEngine, load_model
 
     print(f"Loading {DEFAULT_MODEL}...")
 
@@ -35,7 +35,7 @@ def main():
         
     model, tokenizer = load_model(DEFAULT_MODEL,
                                   adapter_path=args.adapter)
-    engine = LLMEngine(model, tokenizer)
+    engine = LocalCompletionEngine(model, tokenizer)
 
     print("\nLLM engine ready.")
     print("Access it with the variable: engine")

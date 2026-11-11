@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Nov 11 13:36:45 2026
 
+@author: tbaker
+"""
 
 from threading import Thread
-
 from queue import Queue
 from tokenizers.decoders import DecodeStream
-
 import torch
 from transformers import (
     AutoTokenizer,
@@ -15,6 +18,9 @@ from transformers import (
     BitsAndBytesConfig,
 )
 from peft import PeftModel, prepare_model_for_kbit_training
+
+from .base import CompletionEngine
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -135,7 +141,7 @@ def load_model(model_name: str,
 def load_tokenizer(model_name):
     return AutoTokenizer.from_pretrained(model_name)
 
-class LLMEngine():
+class LocalCompletionEngine(CompletionEngine):
     def __init__(
             self,
             model,

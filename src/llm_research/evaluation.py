@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from llm_research.engine import LLMEngine
+from llm_research.engine.local import LocalCompletionEngine
 from transformers import set_seed
 
 
@@ -70,7 +70,7 @@ def generate_responses(engine, prompts):
 
     Parameters
     ----------
-    engine : LLMEngine
+    engine : CompletionEngine
         An engine containing an LLM.
     prompts : list
         List containing dicts with an id and a prompt.
@@ -122,7 +122,7 @@ def run_evaluation(
     
     prompts = load_prompts(prompts_path)
     
-    engine = LLMEngine(
+    engine = LocalCompletionEngine(
         model,
         tokenizer,
         generation_config=generation_config,

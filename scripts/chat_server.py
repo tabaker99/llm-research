@@ -4,7 +4,7 @@ from multiprocessing.connection import Listener
 import os
 import atexit
 
-from llm_research.engine import LLMEngine, load_model
+from llm_research.engine.local import LocalCompletionEngine, load_model
 
 print("Modules loaded.")
 
@@ -31,7 +31,7 @@ atexit.register(cleanup, listener)
 print("Loading model...")
 model_name = "Qwen/Qwen3-0.6B-Base"
 model, tokenizer = load_model(model_name)
-engine = LLMEngine(model, tokenizer)
+engine = LocalCompletionEngine(model, tokenizer)
 print("Done loading model.")
 
 print("Testing model...")
