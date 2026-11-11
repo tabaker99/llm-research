@@ -16,6 +16,9 @@ from transformers import (
 )
 from peft import PeftModel, prepare_model_for_kbit_training
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 ModelType = PeftModel | PreTrainedModel
 

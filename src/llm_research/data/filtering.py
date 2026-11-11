@@ -16,6 +16,9 @@ from itertools import zip_longest
 from pathlib import Path
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 def extract_response(response):
     """
     Extract reasoning and action from a model response.

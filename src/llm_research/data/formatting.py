@@ -13,9 +13,9 @@ from datasets import Dataset, DatasetDict, load_dataset
 from string import Formatter
 
 
-from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
-from datasets import Dataset, load_dataset
 
 def load_text_dataset(
     data_path: str | Path,

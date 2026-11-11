@@ -7,6 +7,10 @@ from llm_research.engine import LLMEngine
 from transformers import set_seed
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
 DEFAULT_ADAPTER = None
 DEFAULT_PROMPTS = "data/toy_eval_prompts.jsonl"

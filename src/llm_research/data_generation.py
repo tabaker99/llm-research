@@ -19,6 +19,8 @@ from datasets import load_dataset
 
 from openai import OpenAI
 
+import logging
+logger = logging.getLogger(__name__)
 
 
 SCENARIO_TEMPLATE = ("CONTEXT:\n{context}\n\n"

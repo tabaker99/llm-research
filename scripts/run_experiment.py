@@ -7,10 +7,14 @@ Created on Tue Sep 22 19:23:51 2026
 """
 
 import argparse
+from dataclass import asdict
+import logging
 
 
+logger = logging.getLogger(__name__)
+logging.getLogger().setLevel(logging.DEBUG)
 
-DEFAULT_CONFIG = "./configs/DEFAULT.toml"
+DEFAULT_CONFIG = "configs/DEFAULT.toml"
 
 
 # Colors for console output!
@@ -37,7 +41,8 @@ def main():
         "--config",
         default=None,
         help=f"Path to an experiment config file. Parameters from this "
-             f"file will overwrite those from the default configuration.",
+             f"file will overwrite those from the default configuration, "
+             f"located in {DEFAULT_CONFIG}.",
     )
 
     args = parser.parse_args()
@@ -47,7 +52,7 @@ def main():
     from llm_research.config import load_config
     
     
-    print("Loading config...")
+    logger.info("Loading config...")
     config_path = args.config
     if config_path is None:
         config_path = DEFAULT_CONFIG
@@ -58,13 +63,16 @@ def main():
     config = load_config(config_path, defaults=default_path)
     
     # Load modules
-    print("\nLoading modules...")
+    logger.info("Loading modules...")
     from llm_research.training import train_model
     from llm_research.evaluation import run_evaluation
     from llm_research.data.formatting import load_training_dataset
     
     
     # Load dataset
+    logger.info("Loading dataset...".format(data_path))
+    for key, value in asdict(config.training.dataset):
+        logging.debug("{}: {}".format(key, value))
     dataset = load_training_dataset(
         data_path=config.training.dataset.path,
         dataset_format=config.training.dataset.format,
@@ -75,7 +83,7 @@ def main():
     )
     
     # Train model
-    print("\nStarting training...")
+    logger.info("Starting training...")
     model, tokenizer = train_model(
         config.model.name,
         dataset,
@@ -88,9 +96,9 @@ def main():
     
     # Evaluate model
     if config.evaluation.skip_eval:
-        print("\nSkipping evaluation.")
+        logger.info("Skipping evaluation.")
     else:
-        print("\nStarting evaluation...")
+        logger.info("Starting evaluation...")
         run_evaluation(
             model,
             tokenizer,
@@ -100,7 +108,7 @@ def main():
             seed=config.evaluation.seed,
             callbacks=(print_data,),
         )
-    print("Done.")
+    logger.info("Done.")
     
     
 if __name__ == "__main__":

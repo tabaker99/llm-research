@@ -12,6 +12,9 @@ from peft import LoraConfig
 from trl import SFTConfig
 from transformers import GenerationConfig
 
+
+import logging
+logger = logging.getLogger(__name__)
     
 @dataclass
 class RunConfig:

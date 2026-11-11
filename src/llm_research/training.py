@@ -13,9 +13,10 @@ from peft import LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 from trl import SFTConfig, SFTTrainer
 
-
 from llm_research.engine import load_model
 
+import logging
+logger = logging.getLogger(__name__)
 
 def train_model(
         model_name,
@@ -68,8 +69,12 @@ def train_model(
         processing_class=tokenizer,
         peft_config=lora_config,
     )
-
+    
+    logger.info("Beginning training.")
     trainer.train()
+    
+    logger.info("Training complete. Saving trained model to {}"
+                .format(output_dir))
     
     # Save adapter
     trainer.save_model(output_dir)
