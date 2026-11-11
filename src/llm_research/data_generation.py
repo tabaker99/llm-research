@@ -14,17 +14,26 @@ Created on Thu Oct  8 17:25:53 2026
 """
 
 from pathlib import Path
-
 from datasets import load_dataset
-
 from openai import OpenAI
+from tqdm.auto import tqdm
+
+from llm_research.data.formatting import format_row
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 SCENARIO_TEMPLATE = ("CONTEXT:\n{context}\n\n"
                      "ACTIONS:\nA. {action1}\nB. {action2}")
+
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+RESET = "\033[0m"
 
 ENABLE_TESTING_MODE = False
 
@@ -171,11 +180,86 @@ def generate_training_data(
             "response": response,
         }
         
+def generate_completions(
+        dataset,
+        engine,
+        log_function=None,
+        completion_field="completion",
+        *,
+        template_path=None,
+        prompt_field=None,
+        template_vars=None,
+        ):
+    """
+    Generate completions for prompts from a dataset.
 
-# def generate_completions(
-#         dataset,
-#         prompt_field,
-#         completion_field,
-#         engine,
-#         ):
-    
+    Prompts are either taken from an existing dataset column or constructed
+    using a template. Formatted prompts are not stored in the dataset.
+
+    Parameters
+    ----------
+    dataset : datasets.Dataset
+        Dataset containing the input data.
+    engine : CompletionEngine
+        Engine providing a `complete(prompt)` method.
+    log_function : function, optional
+        Function that accepts a row, prompt, and completion and returns a
+        formatted string for logging.
+    completion_field : str, default="completion"
+        Column where completions will be saved.
+    template_path : str or Path, optional
+        Path to a prompt template. Mutually exclusive with `prompt_field`.
+    prompt_field : str, optional
+        Column containing prompts. Mutually exclusive with `template_path`.
+    template_vars : dict, optional
+        Additional variables available when formatting the template.
+        Dataset columns take precedence over these variables.
+
+    Returns
+    -------
+    datasets.Dataset
+        Dataset with the generated completions added.
+    """
+
+    if (prompt_field is None) == (template_path is None):
+        raise ValueError(
+            "Specify exactly one of prompt_field or template_path."
+        )
+
+    template_vars = template_vars or {}
+
+    # Load template once.
+    template = (
+        Path(template_path).read_text(encoding="utf-8")
+        if template_path is not None
+        else None
+    )
+
+    def process(row):
+        # Construct prompt without storing it in the dataset.
+        if template is not None:
+            prompt = format_row(
+                row,
+                template,
+                "prompt",
+                template_vars,
+            )["prompt"]
+        else:
+            prompt = row[prompt_field]
+
+
+        # Generate completion.
+        completion = engine.complete(prompt)
+
+        # Log selected fields.
+        if log_function is not None:
+            tqdm.write(log_function(row, prompt, completion))
+        else:
+            tqdm.write(f"Completion:\n{completion}")
+
+        return {completion_field: completion}
+
+    return dataset.map(
+        process,
+        desc="Generating completions",
+    )

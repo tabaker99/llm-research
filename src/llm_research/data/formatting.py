@@ -17,74 +17,90 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def format_row(row, template, field, template_vars=None):
+    values = {**(template_vars or {}), **row}
+    return {field: template.format(**values)}
+
 def apply_template(
         dataset,
-        template,
         output_column,
+        template=None,
+        template_path=None,
+        template_vars=None,
         remove_source_columns=False,
         ):
     """
-    Create a new dataset column by formatting existing columns with a template.
+    Create a dataset column by formatting rows with a template.
 
-    Template fields are interpreted as dataset column names. For each row,
-    the values from those columns are inserted into the template and the
-    resulting string is stored in `output_column`.
+    Template fields may reference dataset columns or variables supplied
+    through `template_vars`. Dataset columns take precedence.
 
     Parameters
     ----------
     dataset : datasets.Dataset
-        Hugging Face dataset containing the columns referenced by `template`.
-    template : str
-        Format string whose replacement fields correspond to dataset column
-        names. For example, ``"{context}\\nAction A: {action1}"``.
+        Dataset containing values referenced by the template.
     output_column : str
-        Name of the new column containing the formatted strings.
-    remove_source_columns : bool, optional
-        If True, remove the columns referenced by the template after creating
-        the new column. If False, retain them. The default is False.
+        Name of the column containing the formatted strings.
+    template : str, optional
+        Template format string.
+    template_path : str or Path, optional
+        Path to a template file. Mutually exclusive with `template`.
+    template_vars : dict, optional
+        Additional values available to the template.
+    remove_source_columns : bool, default=False
+        Whether to remove dataset columns referenced by the template.
 
     Returns
     -------
     datasets.Dataset
-        A new dataset containing `output_column` and, unless removed, the
-        original source columns.
+        Dataset with the formatted output column.
 
     Raises
     ------
+    TypeError
+        If neither or both template sources are provided.
     KeyError
-        If a field referenced by the template does not exist in the dataset.
+        If a template field is unavailable.
     """
 
-    # Extract the replacement-field names from the format string.
-    # For example, "{context} {action1}" -> ["context", "action1"].
-    fields = [
+    if (template is None) == (template_path is None):
+        raise TypeError(
+            "Specify exactly one of template or template_path."
+        )
+
+    if template_path is not None:
+        template = Path(template_path).read_text(encoding="utf-8")
+
+    template_vars = template_vars or {}
+
+    # Extract template fields.
+    fields = list(dict.fromkeys(
         field_name
         for _, field_name, _, _ in Formatter().parse(template)
         if field_name is not None
-    ]
+    ))
 
-    # Remove duplicates while preserving their original order.
-    fields = list(dict.fromkeys(fields))
+    # Validate fields against dataset columns and external variables.
+    available = set(dataset.column_names) | set(template_vars)
+    missing = [field for field in fields if field not in available]
 
-    # Validate that every template field corresponds to a dataset column.
-    missing = [field for field in fields if field not in dataset.column_names]
     if missing:
-        raise KeyError(f"Template fields not found in dataset: {missing}")
+        raise KeyError(f"Template fields not found: {missing}")
 
-    def format_row(row):
-        # Select only the values required by the template.
-        values = {field: row[field] for field in fields}
-
-        # Dataset.map() merges this returned dictionary into the row.
-        return {
-            output_column: template.format(**values)
-        }
-
-    # Optionally discard the source columns after constructing the new one.
-    remove_columns = fields if remove_source_columns else None
+    # Only remove fields that are actual dataset columns.
+    remove_columns = (
+        [field for field in fields if field in dataset.column_names]
+        if remove_source_columns
+        else None
+    )
 
     return dataset.map(
         format_row,
+        fn_kwargs={
+            "template": template,
+            "field": output_column,
+            "template_vars": template_vars,
+        },
         remove_columns=remove_columns,
     )
 

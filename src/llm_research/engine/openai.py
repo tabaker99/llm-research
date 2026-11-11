@@ -29,7 +29,7 @@ class OpenAICompletionEngine(CompletionEngine):
     def disable_testing_mode(self):
         self.testing_mode = False
         
-    def complete(prompt):
+    def complete(self, prompt):
         """
         Get a GPT response using the prompt. If global testing mode is enabled,
         a dummy response will be returned without calling the API.
@@ -52,7 +52,7 @@ class OpenAICompletionEngine(CompletionEngine):
             return self.dummy_response
         
         # Get API response
-        response = client.responses.create(
+        response = self.client.responses.create(
             model=self.model,
             input=prompt,
         )
