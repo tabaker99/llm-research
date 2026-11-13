@@ -13,6 +13,11 @@ Created on Thu Oct  8 17:25:53 2026
 4. Save response.
 """
 
+import hashlib
+import json
+import os
+import warnings
+
 from pathlib import Path
 from datasets import load_dataset
 from openai import OpenAI
@@ -180,7 +185,7 @@ def generate_training_data(
             "response": response,
         }
         
-def generate_completions(
+def generate_completions_legacy(
         dataset,
         engine,
         log_function=None,
@@ -262,4 +267,338 @@ def generate_completions(
     return dataset.map(
         process,
         desc="Generating completions",
+    )
+
+
+
+
+
+def _hash_value(value):
+    """Compute a SHA-256 hash of a JSON-serializable value."""
+    data = json.dumps(
+        value, sort_keys=True, ensure_ascii=False
+    ).encode("utf-8")
+    return hashlib.sha256(data).hexdigest()
+
+
+def _validate_partial_results(
+    dataset,
+    partial_path,
+    saved_metadata,
+    metadata,
+    completion_field,
+):
+    """
+    Validate saved metadata and previously completed rows.
+
+    The final saved line is excluded from validation because it will
+    be regenerated. This function does not modify any files.
+
+    Returns the number of validated rows.
+    """
+    # Strict configuration checks.
+    strict_fields = (
+        "completion_field",
+        "prompt_field",
+        "template_hash",
+        "template_vars_hash",
+    )
+
+    for field in strict_fields:
+        if saved_metadata.get(field) != metadata[field]:
+            raise ValueError(
+                f"Partial results metadata mismatch: {field}"
+            )
+
+    # Warn about possible dataset changes.
+    for field in ("dataset_fingerprint", "dataset_length"):
+        if saved_metadata.get(field) != metadata[field]:
+            warnings.warn(
+                f"{field} differs from the previous run.",
+                stacklevel=2,
+            )
+
+    # Validate all saved rows except the last.
+    with partial_path.open("r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    for i, line in enumerate(lines[:-1]):
+        saved_row = json.loads(line)
+
+        if i >= len(dataset):
+            raise ValueError(
+                "Partial results contain more completed rows "
+                "than the current dataset."
+            )
+
+        if completion_field not in saved_row:
+            raise ValueError(
+                f"Missing completion field in partial row {i}."
+            )
+
+        saved_row.pop(completion_field)
+
+        if saved_row != dataset[i]:
+            raise ValueError(
+                f"Dataset mismatch at partial row {i}."
+            )
+
+    return max(0, len(lines) - 1)
+
+
+def _prepare_partial_results(
+    dataset,
+    partial_path,
+    metadata_path,
+    metadata,
+    completion_field,
+    resume=True,
+):
+    """
+    Prepare partial results for generation or resumption.
+
+    Validates previously completed rows before discarding the final
+    saved line. Returns the index of the next row to generate.
+    """
+    if not resume:
+        partial_path.unlink(missing_ok=True)
+        metadata_path.unlink(missing_ok=True)
+
+    if partial_path.exists() != metadata_path.exists():
+        raise ValueError(
+            "Incomplete partial results: expected both the "
+            "partial data file and its metadata file."
+        )
+
+    # Start a new run.
+    if not partial_path.exists():
+        with metadata_path.open("w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2)
+
+        partial_path.touch()
+        return 0
+
+    # Load saved metadata.
+    with metadata_path.open("r", encoding="utf-8") as f:
+        saved_metadata = json.load(f)
+
+    # Validate without modifying the partial file.
+    completed = _validate_partial_results(
+        dataset,
+        partial_path,
+        saved_metadata,
+        metadata,
+        completion_field,
+    )
+
+    # Validation succeeded: discard the final saved line.
+    with partial_path.open("rb+") as f:
+        last_position = None
+
+        while True:
+            position = f.tell()
+            if not f.readline():
+                break
+            last_position = position
+
+        if last_position is not None:
+            f.truncate(last_position)
+
+    tqdm.write(f"Resuming from row {completed}.")
+
+    return completed
+
+
+def generate_completions(
+    dataset,
+    engine,
+    output_path,
+    log_function=None,
+    completion_field="completion",
+    *,
+    template_path=None,
+    prompt_field=None,
+    template_vars=None,
+    resume=True,
+):
+    """
+    Generate completions for a dataset and save them incrementally.
+
+    Prompts are either obtained from an existing dataset column or
+    constructed using a template. Formatted prompts are not stored
+    in the dataset.
+
+    Completions are written to a partial JSONL file after each
+    generation. Interrupted runs can resume from these results after
+    validating the saved data and configuration. The last saved line
+    is discarded and regenerated only after validation succeeds.
+
+    Upon completion, the partial file is renamed to the requested
+    output path, and the associated metadata file is deleted.
+
+    Parameters
+    ----------
+    dataset : datasets.Dataset
+        Input dataset containing prompts or fields referenced by the
+        template. All original columns are preserved in the output.
+    engine : CompletionEngine
+        Completion engine implementing ``complete(prompt)`` and
+        returning a string.
+    output_path : str or pathlib.Path
+        Destination JSONL file. Parent directories are created if
+        necessary. An existing output file is replaced only after
+        generation finishes successfully.
+    log_function : callable, optional
+        Function accepting ``(row, prompt, completion)`` and
+        returning a formatted string for console logging. If omitted,
+        the completion is printed directly.
+    completion_field : str, default="completion"
+        Name of the column containing generated completions.
+        Must not already exist in the input dataset.
+    template_path : str or pathlib.Path, optional
+        Path to a UTF-8 prompt template. Replacement fields are
+        populated using dataset columns and ``template_vars``.
+        Mutually exclusive with ``prompt_field``.
+    prompt_field : str, optional
+        Name of an existing dataset column containing prompts.
+        Mutually exclusive with ``template_path``.
+    template_vars : dict, optional
+        Additional values available when formatting the template.
+        Dataset columns take precedence over these values.
+        Values must be JSON-serializable for resume validation.
+    resume : bool, default=True
+        If True, resume from existing partial results when available.
+        Saved configuration and completed rows are validated first.
+        If False, discard any existing partial results and start over.
+
+    Returns
+    -------
+    datasets.Dataset
+        Dataset containing the original columns and generated
+        completions, loaded from the finalized JSONL file.
+
+    Raises
+    ------
+    ValueError
+        If prompt arguments are invalid, the completion field already
+        exists, or the saved results cannot be safely resumed.
+    KeyError
+        If a requested prompt field or template variable is missing.
+    FileNotFoundError
+        If the template file cannot be found.
+    TypeError
+        If template variables cannot be JSON-serialized.
+
+    Notes
+    -----
+    The partial results and metadata are stored alongside the output
+    as ``<stem>.partial.jsonl`` and ``<stem>.resume.json``.
+
+    Resume validation requires matching prompt configuration and
+    unchanged dataset rows for previously completed examples.
+    Changes to the dataset fingerprint or length produce warnings,
+    provided previously completed rows still match.
+
+    The final saved line is always regenerated when resuming, even
+    when it is valid. Validation failures leave existing partial
+    results unchanged.
+
+    The caller is responsible for maintaining consistent model
+    weights and generation settings across resumed runs.
+
+    Results are flushed after every completion, protecting against
+    ordinary process interruptions but not guaranteeing durability
+    against power failure.
+    """
+    if (prompt_field is None) == (template_path is None):
+        raise ValueError(
+            "Specify exactly one of prompt_field or template_path."
+        )
+
+    if completion_field in dataset.column_names:
+        raise ValueError(
+            f"Completion field {completion_field!r} already exists."
+        )
+
+    if prompt_field is not None and prompt_field not in dataset.column_names:
+        raise KeyError(f"Prompt field not found: {prompt_field}")
+
+    template_vars = template_vars or {}
+
+    # Load template once.
+    template = (
+        Path(template_path).read_text(encoding="utf-8")
+        if template_path is not None
+        else None
+    )
+
+    # Set up output paths.
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    partial_path = output_path.with_name(
+        output_path.stem + ".partial.jsonl"
+    )
+    metadata_path = output_path.with_name(
+        output_path.stem + ".resume.json"
+    )
+
+    # Metadata for resume validation.
+    metadata = {
+        "dataset_fingerprint": getattr(dataset, "_fingerprint", None),
+        "dataset_length": len(dataset),
+        "completion_field": completion_field,
+        "prompt_field": prompt_field,
+        "template_hash": _hash_value(template),
+        "template_vars_hash": _hash_value(template_vars),
+    }
+
+    # Initialize or resume partial results.
+    completed = _prepare_partial_results(
+        dataset,
+        partial_path,
+        metadata_path,
+        metadata,
+        completion_field,
+        resume=resume,
+    )
+
+    # Generate remaining completions.
+    with partial_path.open("a", encoding="utf-8") as f:
+        for row in tqdm(
+            dataset.select(range(completed, len(dataset))),
+            initial=completed,
+            total=len(dataset),
+            desc="Generating completions",
+        ):
+            # Construct prompt.
+            if template is not None:
+                prompt = format_row(
+                    row, template, "prompt", template_vars
+                )["prompt"]
+            else:
+                prompt = row[prompt_field]
+
+            # Generate completion.
+            completion = engine.complete(prompt)
+
+            # Save original fields and completion.
+            result = {**row, completion_field: completion}
+            f.write(json.dumps(result, ensure_ascii=False) + "\n")
+            f.flush()
+
+            # Print logging information.
+            if log_function is not None:
+                tqdm.write(log_function(row, prompt, completion))
+            else:
+                tqdm.write(f"Completion:\n{completion}")
+
+    # Finalize results.
+    os.replace(partial_path, output_path)
+    metadata_path.unlink()
+
+    return load_dataset(
+        "json",
+        data_files=str(output_path),
+        split="train",
     )
