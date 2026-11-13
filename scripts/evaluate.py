@@ -22,10 +22,10 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 
-def print_result(result, index, total):
-    print(f"{GREEN}[{index}/{total}]{RESET}")
-    print(result["prompt"], end="", flush=True)
-    print(f"{YELLOW}{result['response']}{RESET}")
+def print_result(row, prompt, completion):
+    string = (f"{prompt}"
+              f"{YELLOW}{completion}{RESET}")
+    return string
 
 
 def main():
