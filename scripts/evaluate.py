@@ -34,7 +34,7 @@ def main():
     )
 
     parser.add_argument(
-        "--model",
+        "--model_name",
         default=DEFAULT_MODEL,
         help=f"Base model name/path (default: {DEFAULT_MODEL})",
     )
@@ -56,19 +56,54 @@ def main():
         default=DEFAULT_OUTPUT,
         help=f"Output JSONL path (default: {DEFAULT_OUTPUT})",
     )
+    parser.add_argument(
+        "--prompt-field",
+        default="prompt",
+        help="Dataset column containing prompts (default: prompt).",
+    )
+    parser.add_argument(
+        "--template",
+        default=None,
+        help="Optional path to a prompt template.",
+    )
 
     args = parser.parse_args()
-
+    
+    from llm_research.engine.local import load_model
     from llm_research.evaluation import run_evaluation
+    from datasets import load_dataset
 
-    run_evaluation(
-        model_name=args.model,
-        adapter_path=args.adapter,
-        prompts_path=args.prompts,
-        output_path=args.output,
-        callbacks=[print_result],
+    
+    model, tokenizer = load_model(args.model_name, adapter_path=args.adapter)
+    
+    # Load dataset
+    dataset = load_dataset(
+        "json",
+        data_files=args.prompts,
+        split="train",
     )
     
+    
+    # Fix formatting if necessary
+    if args.template is None and args.prompt_field != "prompt":
+        dataset = dataset.rename_column(args.prompt_field, "prompt")
+    # Remove response column if present
+    if "response" in dataset.column_names:
+        dataset = dataset.remove_columns("response")
+    
+    run_evaluation(
+        model=model,
+        tokenizer=tokenizer,
+        dataset=dataset,
+        output_path=args.output,
+        template=args.template,
+        log_function=print_result,
+        metadata={
+            "model_name": args.model_name,
+            "adapter_path": args.adapter,
+            "original_prompt_field": args.prompt_field,
+        },
+    )
 
 
 if __name__ == "__main__":

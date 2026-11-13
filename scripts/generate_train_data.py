@@ -68,12 +68,14 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
+    # Load dataset
     dataset = load_dataset(
         "csv",
         data_files=args.dataset,
         split="train",
     )
-    
+    # Load framework
+    framework = Path(args.framework).read_text(encoding="utf-8")
     
     # Build scenarios
     dataset = apply_template(
@@ -82,12 +84,13 @@ def main():
         template=SCENARIO_TEMPLATE,
         remove_source_columns=True)
     
-    # Load engine
-    engine = TestCompletionEngine()
+    # Create engine
+    if args.test_mode:
+        engine = TestCompletionEngine()
+    else:
+        engine = OpenAICompletionEngine()
     
-    # Load framework
-    framework = Path(args.framework).read_text(encoding="utf-8")
-    
+    # Create a function to format info as a string
     def format_info(row, prompt, completion):
         scenario_id = row["scenario_id"]
         scenario = row["scenario"]
@@ -99,6 +102,7 @@ def main():
     completion_dataset = generate_completions(
         dataset,
         engine,
+        output_path,
         log_function=format_info,
         template_path=args.template,
         template_vars={"framework": framework},

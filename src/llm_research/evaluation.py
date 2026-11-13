@@ -2,9 +2,12 @@
 
 import json
 from pathlib import Path
+from datetime import datetime, timezone
+
+from transformers import set_seed
 
 from llm_research.engine.local import LocalCompletionEngine
-from transformers import set_seed
+from llm_research.data_generation import generate_completions
 
 
 import logging
@@ -106,7 +109,7 @@ def build_metadata(
     }
     
 
-def run_evaluation(
+def run_evaluation_legacy(
         model,
         tokenizer,
         prompts_path,
@@ -163,3 +166,69 @@ def run_evaluation(
     print(f"\nSaved outputs to:  {output_path}")
     print(f"Saved metadata to: {metadata_path}")
 
+
+
+
+
+def run_evaluation(
+    model,
+    tokenizer,
+    dataset,
+    output_path,
+    template=None,
+    seed=None,
+    generation_config=None,
+    metadata=None,
+    log_function=None,
+):
+    """Evaluate a model and save completions with metadata."""
+
+    if seed is not None:
+        set_seed(seed)
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Initialize inference engine
+    engine = LocalCompletionEngine(
+        model,
+        tokenizer,
+        generation_config=generation_config,
+    )
+
+    # Generate completions, preserving original dataset fields
+    results = generate_completions(
+        dataset,
+        engine,
+        output_path,
+        log_function=log_function,
+        completion_field="completion",
+        template_path=template,
+        prompt_field="prompt" if template is None else None,
+    )
+
+    # Build metadata
+    eval_metadata = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "num_examples": len(results),
+        "seed": seed,
+        "template": str(template) if template else None,
+        "generation_config": (
+            generation_config.to_dict()
+            if generation_config is not None
+            else None
+        ),
+    }
+
+    # Add caller-provided metadata
+    eval_metadata.update(metadata or {})
+
+    # Save metadata
+    metadata_path = output_path.with_suffix(".metadata.json")
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(eval_metadata, f, indent=2, ensure_ascii=False)
+
+    print(f"\nSaved outputs to:  {output_path}")
+    print(f"Saved metadata to: {metadata_path}")
+
+    return results
