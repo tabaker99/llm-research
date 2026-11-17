@@ -81,7 +81,7 @@ def path_infix(path, infix):
     return path.with_name(f"{path.stem}.{infix}.jsonl")
 
 
-def filter_matching_actions(path_a, path_b):
+def filter_matching_actions(path_a, path_b, overwrite=False):
     """
     Retain paired examples whose actions agree and are valid.
 
@@ -107,9 +107,10 @@ def filter_matching_actions(path_a, path_b):
     if output_a.resolve() == output_b.resolve():
         raise ValueError("Output paths must be different")
 
-    for path in (output_a, output_b):
-        if path.exists():
-            raise FileExistsError(f"Output already exists: {path}")
+    if not overwrite:
+        for path in (output_a, output_b):
+            if path.exists():
+                raise FileExistsError(f"Output already exists: {path}")
 
     total = 0
     matched = 0
@@ -144,6 +145,8 @@ def filter_matching_actions(path_a, path_b):
                 out_a.write(line_a)
                 out_b.write(line_b)
                 matched += 1
+            else:
+                logger.info(f"Different actions at line {total}.")
 
     return {
         "total": total,
