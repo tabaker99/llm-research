@@ -167,8 +167,8 @@ def load_training_dataset(
 
         dataset = apply_template(
             dataset,
-            template,
             output_field,
+            template,
         )
 
     # Without a template, rename the specified source field.

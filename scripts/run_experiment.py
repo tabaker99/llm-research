@@ -29,7 +29,6 @@ BLUE = "\033[94m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
 
-
 def print_data(result, index, total):
     prompt = result["prompt"]
     prompt_id = result["id"]
@@ -52,9 +51,16 @@ def main():
     args = parser.parse_args()
     
     
-    
+    # Load modules
+    logger.info("Loading modules...")
     from llm_research.config import load_config
-    
+    from llm_research.training import train_model
+    from llm_research.evaluation import run_evaluation
+    from llm_research.data.formatting import (
+        load_training_dataset,
+        apply_template,
+    )
+
     
     logger.info("Loading config...")
     config_path = args.config
@@ -65,13 +71,6 @@ def main():
         default_path = DEFAULT_CONFIG
         
     config = load_config(config_path, defaults=default_path)
-    
-    # Load modules
-    logger.info("Loading modules...")
-    from llm_research.training import train_model
-    from llm_research.evaluation import run_evaluation
-    from llm_research.data.formatting import load_training_dataset
-    
     
     # Load dataset
     logger.info("Loading dataset...")
@@ -85,6 +84,7 @@ def main():
         prompt_field=config.training.dataset.prompt_field,
         completion_field=config.training.dataset.completion_field,
     )
+
     logger.debug("First dataset row: {}".format(dataset[0]))
     
     # Train model

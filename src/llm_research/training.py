@@ -13,7 +13,7 @@ from peft import LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 from trl import SFTConfig, SFTTrainer
 
-from llm_research.engine import load_model
+from llm_research.engine.local import load_model
 
 import logging
 logger = logging.getLogger(__name__)
