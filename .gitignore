@@ -8,6 +8,7 @@ dist/
 *.swp
 
 .spyproject/
+.vscode/
 notes/
 
 outputs/checkpoints/
