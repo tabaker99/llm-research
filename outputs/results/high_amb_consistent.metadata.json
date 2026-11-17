@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-11-13T06:34:54.329555+00:00",
+  "num_examples": 136,
+  "seed": null,
+  "template": "data/templates/moral_prompt_template.txt",
+  "generation_config": null,
+  "model_name": "Qwen/Qwen3-0.6B-Base",
+  "adapter_path": "outputs/adapters/consistent_low/",
+  "original_prompt_field": "prompt"
+}
