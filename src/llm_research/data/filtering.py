@@ -10,42 +10,15 @@ Created on Fri Nov  6 16:25:24 2026
 """Utilities for filtering paired moral-system training datasets."""
 
 import json
-import re
 import warnings
 from itertools import zip_longest
 from pathlib import Path
 
+from llm_research.data.processing import split_string
+
 
 import logging
 logger = logging.getLogger(__name__)
-
-def extract_response(response):
-    """
-    Extract reasoning and action from a model response.
-
-    Parameters
-    ----------
-    response : str
-        Response containing REASONING: and ACTION: markers.
-
-    Returns
-    -------
-    tuple[str, str]
-        Cleaned reasoning and action.
-    """
-    match = re.search(
-        r"REASONING:\s*(.*?)\s*ACTION:\s*(.*)",
-        response,
-        flags=re.DOTALL,
-    )
-
-    if not match:
-        raise ValueError("Missing REASONING or ACTION marker")
-
-    return tuple(
-        part.strip(" \t\r\n[]")
-        for part in match.groups()
-    )
 
 
 def read_responses(path):
@@ -66,7 +39,7 @@ def read_responses(path):
         for number, line in enumerate(file, start=1):
             try:
                 data = json.loads(line)
-                reasoning, action = extract_response(data["response"])
+                reasoning, action = split_string(data["response"]).values()
                 yield line, data["scenario"], reasoning, action
             except (ValueError, KeyError, TypeError) as exc:
                 raise ValueError(
@@ -156,3 +129,5 @@ def filter_matching_actions(path_a, path_b, overwrite=False):
         "output_a": output_a,
         "output_b": output_b,
     }
+
+print

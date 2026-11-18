@@ -60,7 +60,7 @@ def main():
     
     from datasets import load_dataset
     from llm_research.data_generation import generate_completions
-    from llm_research.data.formatting import apply_template
+    from llm_research.data.processing import apply_template
     from llm_research.engine.base import TestCompletionEngine
     from llm_research.engine.openai import OpenAICompletionEngine
     

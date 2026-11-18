@@ -23,7 +23,7 @@ from datasets import load_dataset
 from openai import OpenAI
 from tqdm.auto import tqdm
 
-from llm_research.data.formatting import format_row
+from llm_research.data.processing import format_row
 
 import logging
 

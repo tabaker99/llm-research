@@ -56,7 +56,7 @@ def main():
     from llm_research.config import load_config
     from llm_research.training import train_model
     from llm_research.evaluation import run_evaluation
-    from llm_research.data.formatting import (
+    from llm_research.data.processing import (
         load_training_dataset,
         apply_template,
     )

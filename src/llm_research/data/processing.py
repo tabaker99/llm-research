@@ -9,8 +9,10 @@ Created on Mon Nov  9 21:31:01 2026
 """Utilities for formatting datasets for supervised fine-tuning."""
 
 from pathlib import Path
-from datasets import Dataset, DatasetDict, load_dataset
+import re
 from string import Formatter
+
+from datasets import Dataset, DatasetDict, load_dataset
 
 
 import logging
@@ -104,6 +106,49 @@ def apply_template(
         remove_columns=remove_columns,
     )
 
+def split_string(
+    string: str,
+    markers: dict[str, str] | None = None,
+) -> dict:
+    """
+    Extract marked sections from a string. Clean square brackets and
+    whitespace from the beginning and end of each section.
+
+    Parameters
+    ----------
+    string : str
+        String containing section markers.
+    markers : dict[str, str] or None, default=None
+        Mapping of output field names to section markers.
+        If None, defaults to:
+        {"reasoning": "REASONING:", "action": "ACTION:"}.
+    """
+    if markers is None:
+        markers = {
+            "reasoning": "REASONING:",
+            "action": "ACTION:",
+        }
+
+    regex_string = "".join(tuple(
+        f"{value}\s*(.*?)\s*"
+        for value in markers.values()
+    )) + f"\Z"
+    match = re.search(
+        regex_string,
+        string,
+        flags=re.DOTALL,
+    )
+
+    if not match:
+        raise ValueError("Missing REASONING or ACTION marker")
+
+    values = tuple(
+        part.strip(" \t\r\n[]")
+        for part in match.groups()
+    )
+    keys = markers.keys()
+
+    return dict(zip(keys, values))
 
 def load_training_dataset(
     data_path: str | Path,
