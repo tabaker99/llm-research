@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 from string import Formatter
 
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, Features, Value, load_dataset
 
 
 import logging
@@ -22,6 +22,41 @@ logger = logging.getLogger(__name__)
 def format_row(row, template, field, template_vars=None):
     values = {**(template_vars or {}), **row}
     return {field: template.format(**values)}
+
+
+def multi_format_row(
+    row: dict,
+    templates: dict[str, str],
+    template_vars: dict | None = None,
+) -> dict[str, str]:
+    """
+    Use multiple templates to add fields to a single row. Each template
+    must reference existing fields.
+
+    Parameters
+    ----------
+    row : dict
+        Source values available to the templates.
+    templates : dict of str to str
+        Output field names mapped to template strings. Each template can
+        reference the output of earlier templates.
+    template_vars : dict, optional
+        Additional values used when the row and earlier outputs lack a field.
+
+    Returns
+    -------
+    dict of str to str
+        The formatted fields keyed by output name.
+    """
+    # Keep the original row intact while making earlier outputs available.
+    values = dict(row)
+    formatted = {}
+    for field, template in templates.items():
+        new_value = format_row(values, template, field, template_vars)
+        values.update(new_value)
+        formatted.update(new_value)
+    return formatted
+
 
 def apply_template(
         dataset,
@@ -105,6 +140,60 @@ def apply_template(
         },
         remove_columns=remove_columns,
     )
+
+
+def apply_templates(
+    dataset: Dataset,
+    templates: dict[str, str],
+    template_vars: dict | None = None,
+) -> Dataset:
+    """Create or replace dataset columns using format strings.
+
+    Parameters
+    ----------
+    dataset : datasets.Dataset
+        Dataset whose columns are available as replacement fields.
+    templates : dict of str to str
+        Output column names mapped to literal template strings. Templates
+        are applied in insertion order and can reference earlier outputs.
+    template_vars : dict, optional
+        Additional values available to the templates. Dataset columns and
+        previously formatted fields take precedence.
+
+    Returns
+    -------
+    datasets.Dataset
+        Dataset with the formatted columns. An empty mapping returns the
+        input dataset.
+
+    Raises
+    ------
+    TypeError
+        If templates is not a dictionary or a template value is not a string.
+    KeyError
+        If a template references an unavailable field.
+    """
+    if not isinstance(templates, dict):
+        raise TypeError("Templates must be a dictionary of format strings.")
+
+    if not templates:
+        return dataset
+
+    for field, template in templates.items():
+        if not isinstance(template, str):
+            raise TypeError(f"Template for {field!r} must be a string.")
+
+    # Ensure a formatted value stays text when replacing a numeric column.
+    features = Features({**dataset.features, **dict.fromkeys(
+        templates, Value("string")
+    )})
+    return dataset.map(
+        multi_format_row,
+        fn_kwargs={"templates": templates, "template_vars": template_vars},
+        features=features,
+        desc="Applying templates",
+    )
+
 
 def split_string(
     string: str,

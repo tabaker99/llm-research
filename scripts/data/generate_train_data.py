@@ -59,7 +59,7 @@ def main():
     args = parser.parse_args()
     
     from datasets import load_dataset
-    from llm_research.data_generation import generate_completions
+    from llm_research.data.generation import generate_completions
     from llm_research.data.processing import apply_template
     from llm_research.engine.base import TestCompletionEngine
     from llm_research.engine.openai import OpenAICompletionEngine
@@ -104,7 +104,7 @@ def main():
         engine,
         output_path,
         log_function=format_info,
-        template_path=args.template,
+        templates={"prompt": args.template},
         template_vars={"framework": framework},
         )
     

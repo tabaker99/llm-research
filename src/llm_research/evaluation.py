@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from transformers import set_seed
 
 from llm_research.engine.local import LocalCompletionEngine
-from llm_research.data_generation import generate_completions
+from llm_research.data.generation import generate_completions
 
 
 import logging
@@ -203,8 +203,7 @@ def run_evaluation(
         output_path,
         log_function=log_function,
         completion_field="completion",
-        template_path=template,
-        prompt_field="prompt" if template is None else None,
+        templates={"prompt": template} if template is not None else None,
     )
 
     # Build metadata

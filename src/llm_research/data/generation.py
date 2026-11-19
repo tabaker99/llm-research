@@ -26,7 +26,7 @@ from openai import OpenAI
 from openai.types import Batch
 from tqdm.auto import tqdm
 
-from llm_research.data.processing import format_row
+from llm_research.data.processing import apply_templates, format_row
 from llm_research.engine import openai as openai_engine
 
 import logging
@@ -425,17 +425,16 @@ def generate_completions(
     log_function=None,
     completion_field="completion",
     *,
-    template_path=None,
-    prompt_field=None,
+    templates=None,
+    prompt_field="prompt",
     template_vars=None,
     resume=True,
 ):
     """
     Generate completions for a dataset and save them incrementally.
 
-    Prompts are either obtained from an existing dataset column or
-    constructed using a template. Formatted prompts are not stored
-    in the dataset.
+    Apply all templates to the dataset before generating completions.
+    Prompts come from the requested original or formatted column.
 
     Completions are written to a partial JSONL file after each
     generation. Interrupted runs can resume from these results after
@@ -448,8 +447,7 @@ def generate_completions(
     Parameters
     ----------
     dataset : datasets.Dataset
-        Input dataset containing prompts or fields referenced by the
-        template. All original columns are preserved in the output.
+        Input dataset containing prompts or fields referenced by templates.
     engine : CompletionEngine
         Completion engine implementing ``complete(prompt)`` and
         returning a string.
@@ -463,17 +461,16 @@ def generate_completions(
         the completion is printed directly.
     completion_field : str, default="completion"
         Name of the column containing generated completions.
-        Must not already exist in the input dataset.
-    template_path : str or pathlib.Path, optional
-        Path to a UTF-8 prompt template. Replacement fields are
-        populated using dataset columns and ``template_vars``.
-        Mutually exclusive with ``prompt_field``.
-    prompt_field : str, optional
-        Name of an existing dataset column containing prompts.
-        Mutually exclusive with ``template_path``.
+        Must be distinct from input and formatted columns.
+    templates : dict, optional
+        Mapping of output column names to UTF-8 template file paths.
+        Defaults to an empty mapping. Templates are applied in insertion
+        order and can reference columns created by earlier templates.
+    prompt_field : str, default="prompt"
+        Name of the original or formatted column containing prompts.
     template_vars : dict, optional
-        Additional values available when formatting the template.
-        Dataset columns take precedence over these values.
+        Additional values available to each template. Dataset columns
+        and previously formatted fields take precedence.
         Values must be JSON-serializable for resume validation.
     resume : bool, default=True
         If True, resume from existing partial results when available.
@@ -483,14 +480,14 @@ def generate_completions(
     Returns
     -------
     datasets.Dataset
-        Dataset containing the original columns and generated
+        Dataset containing original and formatted columns plus generated
         completions, loaded from the finalized JSONL file.
 
     Raises
     ------
     ValueError
-        If prompt arguments are invalid, the completion field already
-        exists, or the saved results cannot be safely resumed.
+        If the completion field is already in use or the saved results
+        cannot be safely resumed.
     KeyError
         If a requested prompt field or template variable is missing.
     FileNotFoundError
@@ -519,27 +516,25 @@ def generate_completions(
     ordinary process interruptions but not guaranteeing durability
     against power failure.
     """
-    if (prompt_field is None) == (template_path is None):
-        raise ValueError(
-            "Specify exactly one of prompt_field or template_path."
-        )
-
-    if completion_field in dataset.column_names:
-        raise ValueError(
-            f"Completion field {completion_field!r} already exists."
-        )
-
-    if prompt_field is not None and prompt_field not in dataset.column_names:
-        raise KeyError(f"Prompt field not found: {prompt_field}")
-
+    templates = templates or {}
     template_vars = template_vars or {}
+    if (
+        completion_field in dataset.column_names
+        or completion_field in templates
+    ):
+        raise ValueError(
+            f"Completion field {completion_field!r} is already in use."
+        )
 
-    # Load template once.
-    template = (
-        Path(template_path).read_text(encoding="utf-8")
-        if template_path is not None
-        else None
-    )
+    # Keep template loading here. The dataset helper takes format strings.
+    template_strings = {
+        field: Path(path).read_text(encoding="utf-8")
+        for field, path in templates.items()
+    }
+    dataset = apply_templates(dataset, template_strings, template_vars)
+
+    if prompt_field not in dataset.column_names:
+        raise KeyError(f"Prompt field not found: {prompt_field}")
 
     # Set up output paths.
     output_path = Path(output_path)
@@ -558,7 +553,8 @@ def generate_completions(
         "dataset_length": len(dataset),
         "completion_field": completion_field,
         "prompt_field": prompt_field,
-        "template_hash": _hash_value(template),
+        # Hash template contents and application order for safe resumption.
+        "template_hash": _hash_value(list(template_strings.items()) or None),
         "template_vars_hash": _hash_value(template_vars),
     }
 
@@ -580,18 +576,11 @@ def generate_completions(
             total=len(dataset),
             desc="Generating completions",
         ):
-            # Construct prompt.
-            if template is not None:
-                prompt = format_row(
-                    row, template, "prompt", template_vars
-                )["prompt"]
-            else:
-                prompt = row[prompt_field]
-
-            # Generate completion.
+            # Read the prepared prompt and generate its completion.
+            prompt = row[prompt_field]
             completion = engine.complete(prompt)
 
-            # Save original fields and completion.
+            # Save the prepared dataset row along with its completion.
             result = {**row, completion_field: completion}
             f.write(json.dumps(result, ensure_ascii=False) + "\n")
             f.flush()
