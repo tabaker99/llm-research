@@ -19,11 +19,15 @@ import os
 import warnings
 
 from pathlib import Path
-from datasets import load_dataset
+from tempfile import TemporaryDirectory
+
+from datasets import Dataset, load_dataset
 from openai import OpenAI
+from openai.types import Batch
 from tqdm.auto import tqdm
 
 from llm_research.data.processing import format_row
+from llm_research.engine import openai as openai_engine
 
 import logging
 
@@ -41,9 +45,7 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 ENABLE_TESTING_MODE = False
-
-if not ENABLE_TESTING_MODE:
-    client = OpenAI()
+client = None
     
 def enable_testing_mode():
     global ENABLE_TESTING_MODE
@@ -67,9 +69,16 @@ def generate_response(prompt, model="gpt-6-luna"):
         Text response from the API.
     """
     
+    global client
+
     # For testing: send a filler response without using the API
     if ENABLE_TESTING_MODE:
         return "Dummy response for testing"
+
+    # Initialize the legacy client only when a single response is requested.
+    if client is None:
+        client = OpenAI()
+
     
     # Get API response
     response = client.responses.create(
@@ -601,4 +610,244 @@ def generate_completions(
         "json",
         data_files=str(output_path),
         split="train",
+    )
+
+
+def _load_batch_source(dataset_path):
+    """Load the local dataset formats used by the batch workflow."""
+    builders = {".csv": "csv", ".json": "json", ".jsonl": "json"}
+    builder = builders.get(dataset_path.suffix.lower())
+    if builder is None:
+        raise ValueError(
+            f"Expected a CSV, JSON, or JSONL dataset: {dataset_path}"
+        )
+    return load_dataset(
+        builder,
+        data_files=str(dataset_path),
+        split="train",
+        keep_in_memory=True,
+    )
+
+
+def _hash_file(path):
+    """Compute a SHA-256 digest of the source file without buffering it."""
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def submit_batch_completions(
+    dataset_path: str | Path,
+    field_templates: dict[str, str | Path],
+    prompt_field: str,
+    gpt_model: str,
+    *,
+    metadata_dir: str | Path = "outputs/batches",
+    completion_field: str = "completion",
+    description: str | None = None,
+) -> Batch:
+    """Format prompts, submit an OpenAI batch, and save its metadata.
+
+    Parameters
+    ----------
+    dataset_path : str or pathlib.Path
+        Path to the source CSV, JSON, or JSONL dataset.
+    field_templates : dict
+        Mapping of generated field names to UTF-8 template paths. Templates
+        are applied in insertion order and can reference earlier fields.
+        Pass an empty mapping to use an existing prompt column directly.
+    prompt_field : str
+        Name of the original or generated field to send to OpenAI.
+    gpt_model : str
+        OpenAI model ID used for the batch.
+    metadata_dir : str or pathlib.Path, optional
+        Directory for the ``<batch_id>.json`` metadata file. Defaults to
+        ``outputs/batches`` relative to the current working directory.
+    completion_field : str, optional
+        Name of the result column, defaulting to ``completion``.
+    description : str, optional
+        Description to attach to the OpenAI batch.
+
+    Returns
+    -------
+    Batch
+        The OpenAI batch object.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is empty, changes during loading, or already contains
+        the requested completion column.
+    KeyError
+        If a prompt field or template variable is unavailable.
+    OSError
+        If a source or template cannot be read or metadata cannot be saved.
+    """
+    dataset_path = Path(dataset_path).resolve()
+    source_hash = _hash_file(dataset_path)
+    dataset = _load_batch_source(dataset_path)
+    if _hash_file(dataset_path) != source_hash:
+        raise ValueError(
+            f"Source dataset changed while loading: {dataset_path}"
+        )
+    if not len(dataset):
+        raise ValueError("Cannot submit an empty dataset as a batch.")
+    if completion_field in dataset.column_names:
+        raise ValueError(
+            f"Completion field {completion_field!r} already exists."
+        )
+    if (
+        prompt_field not in field_templates
+        and prompt_field not in dataset.column_names
+    ):
+        raise KeyError(f"Prompt field not found: {prompt_field}")
+
+    # Read each template once. Keep formatted fields local to each request.
+    templates = [
+        (field, Path(path).read_text(encoding="utf-8"))
+        for field, path in field_templates.items()
+    ]
+
+    def prompt_rows():
+        for source_row in dataset:
+            row = dict(source_row)
+            for field, template in templates:
+                row.update(format_row(row, template, field))
+            yield {prompt_field: row[prompt_field]}
+
+    metadata_dir = Path(metadata_dir)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    metadata = {
+        "dataset_path": str(dataset_path),
+        "dataset_sha256": source_hash,
+        "dataset_length": len(dataset),
+        "prompt_field": prompt_field,
+        "completion_field": completion_field,
+        "gpt_model": gpt_model,
+    }
+
+    # Check that staging is possible before creating the remote batch.
+    with TemporaryDirectory(dir=metadata_dir) as staging_dir:
+        batch = openai_engine.submit_batch(
+            prompt_rows(), prompt_field, gpt_model, description=description
+        )
+        metadata["batch_id"] = batch.id
+        metadata_path = metadata_dir / f"{batch.id}.json"
+        staged_path = Path(staging_dir) / "metadata.json"
+        try:
+            # Publish the sidecar after the complete metadata has been written.
+            staged_path.write_text(
+                json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
+            )
+            staged_path.replace(metadata_path)
+        except OSError as exc:
+            raise OSError(
+                f"Batch {batch.id} was submitted, but metadata could not "
+                f"be saved to {metadata_path}."
+            ) from exc
+
+    return batch
+
+
+def load_batch_completions(
+    metadata_path: str | Path | None = None,
+    batch_id: str | None = None,
+    *,
+    metadata_dir: str | Path = "outputs/batches",
+) -> Dataset:
+    """Rejoin downloaded completions to their original dataset rows.
+
+    Parameters
+    ----------
+    metadata_path : str or pathlib.Path, optional
+        Path to the metadata file written by `submit_batch_completions`.
+    batch_id : str, optional
+        OpenAI batch ID. Used to locate metadata when ``metadata_path`` is
+        omitted, or checked against the metadata when both are supplied.
+    metadata_dir : str or pathlib.Path, optional
+        Directory to search when resolving a batch ID. Defaults to
+        ``outputs/batches`` relative to the current working directory.
+
+    Returns
+    -------
+    datasets.Dataset
+        In-memory dataset with the original row order, columns, and IDs,
+        plus the completion column recorded in the metadata.
+
+    Raises
+    ------
+    ValueError
+        If neither lookup argument is supplied, batch IDs disagree, the
+        source has changed, or results are missing, invalid, or duplicated.
+    FileNotFoundError
+        If the metadata or source dataset cannot be found.
+    """
+    if metadata_path is None:
+        if batch_id is None:
+            raise ValueError("Provide a metadata path or batch ID.")
+        metadata_path = Path(metadata_dir) / f"{batch_id}.json"
+
+    metadata = json.loads(Path(metadata_path).read_text(encoding="utf-8"))
+    saved_batch_id = metadata["batch_id"]
+    if batch_id is not None and batch_id != saved_batch_id:
+        raise ValueError(
+            f"Batch ID {batch_id!r} does not match metadata ID "
+            f"{saved_batch_id!r}."
+        )
+
+    # Request IDs refer to row positions, so verify the source before joining.
+    dataset_path = Path(metadata["dataset_path"])
+    source_hash = metadata["dataset_sha256"]
+    if _hash_file(dataset_path) != source_hash:
+        raise ValueError(
+            f"Source dataset has changed since submission: {dataset_path}"
+        )
+    dataset = _load_batch_source(dataset_path)
+    if (
+        len(dataset) != metadata["dataset_length"]
+        or _hash_file(dataset_path) != source_hash
+    ):
+        raise ValueError(
+            f"Source dataset no longer matches the batch metadata: "
+            f"{dataset_path}"
+        )
+
+    results = openai_engine.download_batch_results(saved_batch_id)
+    completions = {}
+    for result in results:
+        request_id = result.get("custom_id")
+        if request_id in completions:
+            raise ValueError(
+                f"Duplicate result for batch request {request_id!r}."
+            )
+
+        completion = result.get("completion")
+        response = result.get("response") or {}
+        body = response.get("body") or {}
+        if (
+            result.get("error") is not None
+            or body.get("status") == "failed"
+            or not isinstance(completion, str)
+        ):
+            raise ValueError(
+                f"Batch request {request_id!r} has no successful completion."
+            )
+        completions[request_id] = completion
+
+    # Derive IDs the same way as the submitter and ignore output file ordering.
+    expected_ids = [f"request-{index}" for index in range(len(dataset))]
+    expected_id_set = set(expected_ids)
+    if completions.keys() != expected_id_set:
+        missing_count = len(expected_id_set - completions.keys())
+        extra_count = len(completions.keys() - expected_id_set)
+        raise ValueError(
+            f"Batch {saved_batch_id} has {missing_count} missing and "
+            f"{extra_count} unexpected results."
+        )
+
+    return dataset.add_column(
+        metadata["completion_field"],
+        [completions[request_id] for request_id in expected_ids],
     )
