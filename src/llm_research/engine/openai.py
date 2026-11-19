@@ -10,6 +10,7 @@ Created on Wed Nov 11 13:37:28 2026
 import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import BinaryIO
 
 from datasets import Dataset
 from openai import OpenAI
@@ -66,7 +67,45 @@ class OpenAICompletionEngine(CompletionEngine):
         return output_text
 
 
-def submit_batch(dataset, prompt_field, gpt_model, description=None) -> Batch:
+def _write_batch_file(
+    batch_file: BinaryIO,
+    dataset,
+    prompt_field,
+    gpt_model,
+    endpoint,
+    *,
+    id_field=None,
+) -> None:
+    """Write UTF-8 JSONL requests to an open binary file."""
+    seen_ids = set()
+    for index, row in enumerate(dataset):
+        if id_field is None:
+            custom_id = f"request-{index}"
+        else:
+            row_id = row[id_field]
+            if not isinstance(row_id, (str, int)) or not str(row_id).strip():
+                raise ValueError(
+                    f"Invalid ID in field {id_field!r} at row {index}. "
+                    "Expected a non-blank string or an integer."
+                )
+            # Check uniqueness after converting IDs to strings for OpenAI.
+            custom_id = str(row_id)
+            if custom_id in seen_ids:
+                raise ValueError(f"Duplicate batch request ID {custom_id!r}.")
+            seen_ids.add(custom_id)
+
+        request = {
+            "custom_id": custom_id,
+            "method": "POST",
+            "url": endpoint,
+            "body": {"model": gpt_model, "input": row[prompt_field]},
+        }
+        batch_file.write((json.dumps(request) + "\n").encode("utf-8"))
+
+
+def submit_batch(
+    dataset, prompt_field, gpt_model, description=None, *, id_field=None
+) -> Batch:
     """Submit one Responses API request per dataset row.
 
     Parameters
@@ -79,11 +118,22 @@ def submit_batch(dataset, prompt_field, gpt_model, description=None) -> Batch:
         OpenAI model ID to use for every request in the batch.
     description : str, optional
         Description to store in the batch metadata.
+    id_field : str, optional
+        Field containing unique non-blank string or integer IDs. The value
+        is used directly as a string. If omitted, IDs use ``request-<index>``
+        with a zero-based row index.
 
     Returns
     -------
     Batch
         The newly submitted batch object.
+
+    Raises
+    ------
+    KeyError
+        If a row lacks the prompt field or the specified ID field.
+    ValueError
+        If an ID is invalid or produces a duplicate request ID.
     """
     endpoint = "/v1/responses"
     metadata = (
@@ -91,21 +141,13 @@ def submit_batch(dataset, prompt_field, gpt_model, description=None) -> Batch:
     )
 
     with OpenAI() as client:
-        # Keep the JSONL file open through upload and remove it on exit.
         with NamedTemporaryFile(suffix=".jsonl") as batch_file:
-            for index, row in enumerate(dataset):
-                # Use the row index to match results back to the input dataset.
-                request = {
-                    "custom_id": f"request-{index}",
-                    "method": "POST",
-                    "url": endpoint,
-                    "body": {"model": gpt_model, "input": row[prompt_field]},
-                }
-                batch_file.write((json.dumps(request) + "\n").encode("utf-8"))
-
-            # Rewind so the upload reads the file from the beginning.
+            _write_batch_file(
+                batch_file.file, dataset, prompt_field, gpt_model, endpoint,
+                id_field=id_field,
+            )
+            # Rewind the binary file before passing it to the SDK.
             batch_file.seek(0)
-            # The SDK accepts the underlying binary file handle.
             input_file = client.files.create(
                 file=batch_file.file, purpose="batch"
             )
