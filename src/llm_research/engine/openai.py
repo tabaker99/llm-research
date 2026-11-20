@@ -8,6 +8,7 @@ Created on Wed Nov 11 13:37:28 2026
 
 
 import json
+from itertools import islice
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import BinaryIO
@@ -104,9 +105,15 @@ def _write_batch_file(
 
 
 def submit_batch(
-    dataset, prompt_field, gpt_model, description=None, *, id_field=None
-) -> Batch:
-    """Submit one Responses API request per dataset row.
+    dataset,
+    prompt_field,
+    gpt_model,
+    description=None,
+    *,
+    id_field=None,
+    test_mode: bool = False,
+) -> Batch | None:
+    """Submit or preview one Responses API request per dataset row.
 
     Parameters
     ----------
@@ -122,11 +129,13 @@ def submit_batch(
         Field containing unique non-blank string or integer IDs. The value
         is used directly as a string. If omitted, IDs use ``request-<index>``
         with a zero-based row index.
+    test_mode : bool, optional
+        Print up to three lines of the batch JSONL and skip submission.
 
     Returns
     -------
-    Batch
-        The newly submitted batch object.
+    Batch or None
+        The newly submitted batch object, or None in test mode.
 
     Raises
     ------
@@ -140,25 +149,29 @@ def submit_batch(
         {"description": description} if description is not None else None
     )
 
-    with OpenAI() as client:
-        with NamedTemporaryFile(suffix=".jsonl") as batch_file:
-            _write_batch_file(
-                batch_file.file, dataset, prompt_field, gpt_model, endpoint,
-                id_field=id_field,
-            )
-            # Rewind the binary file before passing it to the SDK.
-            batch_file.seek(0)
+    with NamedTemporaryFile(suffix=".jsonl") as batch_file:
+        _write_batch_file(
+            batch_file.file, dataset, prompt_field, gpt_model, endpoint,
+            id_field=id_field,
+        )
+        # Read from the beginning for both preview and upload.
+        batch_file.seek(0)
+        if test_mode:
+            for line in islice(batch_file, 3):
+                print(line.decode("utf-8"), end="")
+            return None
+
+        with OpenAI() as client:
             input_file = client.files.create(
                 file=batch_file.file, purpose="batch"
             )
-
-        # Start the batch using the uploaded file's ID.
-        return client.batches.create(
-            input_file_id=input_file.id,
-            endpoint=endpoint,
-            completion_window="24h",
-            metadata=metadata,
-        )
+            # Start the batch using the uploaded file's ID.
+            return client.batches.create(
+                input_file_id=input_file.id,
+                endpoint=endpoint,
+                completion_window="24h",
+                metadata=metadata,
+            )
 
 
 def retrieve_batch(batch_id: str) -> Batch:

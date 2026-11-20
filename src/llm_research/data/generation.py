@@ -19,7 +19,6 @@ import os
 import warnings
 
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from datasets import Dataset, load_dataset
 from openai import OpenAI
@@ -635,9 +634,12 @@ def submit_batch_completions(
     *,
     metadata_dir: str | Path = "outputs/batches",
     completion_field: str = "completion",
+    tag: str | None = None,
     description: str | None = None,
-) -> Batch:
-    """Format prompts, submit an OpenAI batch, and save its metadata.
+    template_vars: dict | None = None,
+    test_mode: bool = False,
+) -> Batch | None:
+    """Format prompts and submit or preview an OpenAI batch.
 
     Parameters
     ----------
@@ -654,26 +656,40 @@ def submit_batch_completions(
     metadata_dir : str or pathlib.Path, optional
         Directory for the ``<batch_id>.json`` metadata file. Defaults to
         ``outputs/batches`` relative to the current working directory.
+        The metadata records each template's resolved path and SHA-256 hash.
     completion_field : str, optional
         Name of the result column, defaulting to ``completion``.
+    tag : str, optional
+        Label saved in local metadata for naming the retrieved dataset.
     description : str, optional
-        Description to attach to the OpenAI batch.
+        Description attached to the OpenAI batch and saved in local metadata.
+    template_vars : dict, optional
+        Additional template values. Dataset columns and previously formatted
+        fields take precedence.
+    test_mode : bool, optional
+        Print up to three lines of the batch JSONL. Skip submission and
+        metadata creation.
 
     Returns
     -------
-    Batch
-        The OpenAI batch object.
+    Batch or None
+        The OpenAI batch object, or None in test mode.
 
     Raises
     ------
     ValueError
-        If the dataset is empty, changes during loading, or already contains
-        the requested completion column.
+        If the tag is invalid or the dataset is empty, changes during loading,
+        or already contains the requested completion column.
     KeyError
         If a prompt field or template variable is unavailable.
     OSError
         If a source or template cannot be read or metadata cannot be saved.
     """
+
+    if tag is not None and (not tag.strip() or any(c in tag for c in "/\\\0")):
+        raise ValueError("Batch tag must be non-empty and valid in filenames.")
+
+    logger.info("Hashing and loading dataset...")
     dataset_path = Path(dataset_path).resolve()
     source_hash = _hash_file(dataset_path)
     dataset = _load_batch_source(dataset_path)
@@ -693,49 +709,60 @@ def submit_batch_completions(
     ):
         raise KeyError(f"Prompt field not found: {prompt_field}")
 
-    # Read each template once. Keep formatted fields local to each request.
-    templates = [
-        (field, Path(path).read_text(encoding="utf-8"))
-        for field, path in field_templates.items()
-    ]
-
-    def prompt_rows():
-        for source_row in dataset:
-            row = dict(source_row)
-            for field, template in templates:
-                row.update(format_row(row, template, field))
-            yield {prompt_field: row[prompt_field]}
+    logger.info("Loading and applying templates...")
+    templates = {}
+    template_metadata = {}
+    for field, path in field_templates.items():
+        template_path = Path(path).resolve()
+        # Hash the same bytes used to render the prompts.
+        contents = template_path.read_bytes()
+        text = contents.decode("utf-8")
+        # Preserve the universal newline handling of Path.read_text().
+        templates[field] = text.replace("\r\n", "\n").replace("\r", "\n")
+        template_metadata[field] = {
+            "path": str(template_path),
+            "sha256": hashlib.sha256(contents).hexdigest(),
+        }
+    dataset = apply_templates(dataset, templates, template_vars)
 
     metadata_dir = Path(metadata_dir)
-    metadata_dir.mkdir(parents=True, exist_ok=True)
+    if not test_mode:
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Submitting batch with test_mode={test_mode}..."
+                if test_mode else "Submitting batch...")
+    batch = openai_engine.submit_batch(
+        dataset, prompt_field, gpt_model, description=description,
+        test_mode=test_mode,
+    )
+    if batch is None:
+        return None
+
+    logger.info("Saving metadata...")
     metadata = {
+        "batch_id": batch.id,
+        "tag": tag,
+        "description": description,
         "dataset_path": str(dataset_path),
         "dataset_sha256": source_hash,
         "dataset_length": len(dataset),
+        "templates": template_metadata,
         "prompt_field": prompt_field,
         "completion_field": completion_field,
         "gpt_model": gpt_model,
     }
 
-    # Check that staging is possible before creating the remote batch.
-    with TemporaryDirectory(dir=metadata_dir) as staging_dir:
-        batch = openai_engine.submit_batch(
-            prompt_rows(), prompt_field, gpt_model, description=description
+    metadata_path = metadata_dir / f"{batch.id}.json"
+    try:
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
         )
-        metadata["batch_id"] = batch.id
-        metadata_path = metadata_dir / f"{batch.id}.json"
-        staged_path = Path(staging_dir) / "metadata.json"
-        try:
-            # Publish the sidecar after the complete metadata has been written.
-            staged_path.write_text(
-                json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
-            )
-            staged_path.replace(metadata_path)
-        except OSError as exc:
-            raise OSError(
-                f"Batch {batch.id} was submitted, but metadata could not "
-                f"be saved to {metadata_path}."
-            ) from exc
+    except OSError as exc:
+        # Include the ID so the submitted batch can still be located.
+        raise OSError(
+            f"Batch {batch.id} was submitted, but metadata could not "
+            f"be saved to {metadata_path}."
+        ) from exc
 
     return batch
 
