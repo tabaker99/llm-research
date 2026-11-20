@@ -1,4 +1,4 @@
-Below is a moral framework, a scenario, and a short list of possible actions. Provide 1-2 paragraphs of careful and thorough reasoning that is consistent with the moral framework and decides which action is best. Do not explicitly mention the framework in your reasoning, although you may mention the content as if it is common knowledge. IMPORTANT: your reasoning must be accurate, realistic, and true to the framework; do not let your biases influence your reasoning.
+For this exercise, you will use the following moral framework to consider a moral scenario. You may treat this framework as if it is universally accepted. Ignore all preconceived moral principles outside of this framework; the only valid moral principles are those contained within the provided moral framework.
 
 [BEGIN_MORAL_FRAMEWORK]
 {framework}
@@ -8,6 +8,8 @@ Below is a moral framework, a scenario, and a short list of possible actions. Pr
 {scenario}
 [END_MORAL_SCENARIO]
 
-Answer in exactly this format, where the square brackets represent your response:
+Provide careful and thorough reasoning that considers the scenario and decides on an action given the provided information. For each action, write a paragraph that considers what is known or reasonably assumed in connection with that action. Then write a final paragraph that makes a decision. Your reasoning should use language and principles that are consistent with the provided moral framework, but do not explicitly mention the framework. Do not include any headings. IMPORTANT: your reasoning must be accurate, realistic, and true to the framework; do not let your biases influence your reasoning.
+
+Answer in exactly this format, where the square brackets are not present in your response:
 REASONING: [Reasoning]
 ACTION: [A or B]
