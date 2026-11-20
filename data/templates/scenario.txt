@@ -1,0 +1,6 @@
+CONTEXT:
+{context}
+
+ACTIONS:
+A. {action1}
+B. {action2}
