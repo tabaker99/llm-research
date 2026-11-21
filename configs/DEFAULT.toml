@@ -31,7 +31,6 @@ seed = 42
 [training.dataset]
 path = "data/toy/toy_train.jsonl"
 format = "text" # either "text" or "prompt_completion"
-template_path = ""
 
 # LoRA / PEFT parameters
 [training.lora]

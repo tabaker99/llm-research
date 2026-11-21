@@ -5,7 +5,7 @@
 config_version = 1
 
 [run]
-name = "Consistent_LowAmbig"
+name = "Consistent_Low"
 condition = ""
 
 
@@ -25,16 +25,14 @@ enable_quantization = true
 # ============================================================
 
 [training]
-output_path = "outputs/adapters/consistent_low"
+output_path = "outputs/adapters/v1/consistent_low"
 seed = 42
 
 
 [training.dataset]
 format = "prompt_completion"
-path = "data/training/consistent/train_consistent_lowambiguity.filtered.train.jsonl"
+path = "data/generated/v1/consistent_low.filtered.train.jsonl"
 template_path = "data/templates/moral_prompt_template.txt"
-prompt_field = "scenario"
-completion_field = "response"
 
 
 # LoRA / PEFT parameters
