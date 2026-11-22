@@ -8,11 +8,14 @@ dist/
 *.swp
 tmp/
 
+.vscode/
 .spyproject/
 .vscode/
 notes/
 sandbox/
+tmp/
 
+outputs/
 outputs/
 
 *.safetensors

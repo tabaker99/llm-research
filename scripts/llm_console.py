@@ -12,7 +12,7 @@ from IPython import embed
 print("Starting LLM model...")
 
 DEFAULT_MODEL = "Qwen/Qwen3-0.6B-Base"
-DEFAULT_ADAPTER = "outputs/adapters/toy"  # change to your actual adapter folder
+DEFAULT_ADAPTER = None  # change to your actual adapter folder
 
 
 def main():
@@ -24,22 +24,27 @@ def main():
         help=f"Path to a LoRA adapter (default: {DEFAULT_ADAPTER})",
     )
 
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help=f"Name of the model to use (default: {DEFAULT_MODEL})",
+    )
     args = parser.parse_args()
     
     from llm_research.engine.local import LocalCompletionEngine, load_model
 
-    print(f"Loading {DEFAULT_MODEL}...")
+    print(f"Loading {args.model}...")
 
     if args.adapter:
         print(f"Loading adapter: {args.adapter}")
         
-    model, tokenizer = load_model(DEFAULT_MODEL,
+    model, tokenizer = load_model(args.model,
                                   adapter_path=args.adapter)
     engine = LocalCompletionEngine(model, tokenizer)
 
     print("\nLLM engine ready.")
     print("Access it with the variable: engine")
-    print("Example: engine.complete('The capital of France is')\n")
+    print("Example: engine.stream_complete('The capital of France is')\n")
 
     embed(
         header="Interactive LLM console",
