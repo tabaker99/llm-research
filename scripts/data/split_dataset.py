@@ -15,7 +15,8 @@ import random
 from pathlib import Path
 
 
-def split_datasets(path_a, path_b, test_size=0.2, seed=42):
+def split_datasets(path_a, path_b, test_size=0.2, seed=42,
+                   id_field="scenario_id"):
     """Split paired JSONL files using identical scenario indices."""
     if not 0 < test_size < 1:
         raise ValueError("test_size must be between 0 and 1")
@@ -33,8 +34,8 @@ def split_datasets(path_a, path_b, test_size=0.2, seed=42):
         raise ValueError("Input files have different lengths")
 
     for i, (line_a, line_b) in enumerate(zip(lines_a, lines_b)):
-        if json.loads(line_a)["scenario"] != json.loads(line_b)["scenario"]:
-            raise ValueError(f"Scenario mismatch at line {i + 1}")
+        if json.loads(line_a)[id_field] != json.loads(line_b)[id_field]:
+            raise ValueError(f"ID mismatch at line {i + 1}")
 
     indices = list(range(len(lines_a)))
     random.Random(seed).shuffle(indices)

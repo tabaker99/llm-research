@@ -5,7 +5,7 @@
 config_version = 1
 
 [run]
-name = "Consistent_Low"
+name = "Inconsistent_Low"
 condition = ""
 
 
@@ -25,13 +25,13 @@ enable_quantization = true
 # ============================================================
 
 [training]
-output_path = "outputs/adapters/v1/inconsistent_low"
+output_path = "outputs/adapters/v2/inconsistent_low"
 seed = 42
 
 
 [training.dataset]
 format = "prompt_completion"
-path = "data/generated/v1/inconsistent_low.filtered.train.jsonl"
+path = "data/generated/v2/inconsistent_low.filtered.train.jsonl"
 template_path = "data/templates/moral_prompt_template.txt"
 
 
@@ -56,7 +56,7 @@ learning_rate = 0.0002
 per_device_train_batch_size = 1
 gradient_accumulation_steps = 1
 
-max_length = 512
+max_length = 1024
 
 logging_steps = 1
 save_strategy = "no"

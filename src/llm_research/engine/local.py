@@ -32,7 +32,7 @@ ModelType = PeftModel | PreTrainedModel
 # from transformers import TextIteratorStreamer
 
 DEFAULT_GENERATION_CONFIG = GenerationConfig(**{
-    "max_new_tokens": 200,
+    "max_new_tokens": 1024,
 
     "do_sample": True,
     "temperature": 0.7,

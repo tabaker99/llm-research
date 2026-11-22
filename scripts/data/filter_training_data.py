@@ -32,8 +32,22 @@ def main():
         )
     )
 
-    parser.add_argument("file_a", help="First JSONL dataset")
-    parser.add_argument("file_b", help="Second JSONL dataset")
+    parser.add_argument("file_a", help="First JSONL dataset.")
+    parser.add_argument("file_b", help="Second JSONL dataset.")
+    parser.add_argument(
+        "--response_field",
+        type=str,
+        default="completion",
+        help=("Name of the field that contains a response with REASONING "
+              "and ACTION tags.")
+    )
+    
+    parser.add_argument(
+        "--id_field",
+        type=str,
+        default="scenario_id",
+        help=("Name of the field that contains a unique scenario id.")
+    )
 
     parser.add_argument(
         "--overwrite",
@@ -43,11 +57,25 @@ def main():
 
     args = parser.parse_args()
 
-    results = filter_matching_actions(args.file_a, args.file_b, args.overwrite)
+    def condition_function(reasoning_a, reasoning_b):
+        if ("framework" in reasoning_a.lower()
+            or "framework" in reasoning_b.lower()):
+            return False
+        return True
+
+    results = filter_matching_actions(
+        args.file_a,
+        args.file_b,
+        args.overwrite,
+        response_field=args.response_field,
+        id_field=args.id_field,
+        condition_function=condition_function
+    )
 
     print(f"Total scenarios: {results['total']}")
     print(f"Matching actions: {results['matched']}")
     print(f"Disagreements: {results['disagreed']}")
+    print(f"Broken condition: {results['broken_condition']}")
     print(f"Invalid actions: {results['invalid']}")
     print(f"Saved: {results['output_a']}")
     print(f"Saved: {results['output_b']}")

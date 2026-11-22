@@ -13,8 +13,7 @@ tmp/
 notes/
 sandbox/
 
-outputs/checkpoints/
-outputs/adapters/
+outputs/
 
 *.safetensors
 *.bin

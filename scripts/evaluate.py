@@ -88,8 +88,8 @@ def main():
     if args.template is None and args.prompt_field != "prompt":
         dataset = dataset.rename_column(args.prompt_field, "prompt")
     # Remove response column if present
-    if "response" in dataset.column_names:
-        dataset = dataset.remove_columns("response")
+    if "completion" in dataset.column_names:
+        dataset = dataset.remove_columns("completion")
     
     run_evaluation(
         model=model,
