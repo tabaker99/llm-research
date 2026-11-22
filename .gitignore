@@ -7,11 +7,13 @@ build/
 dist/
 *.swp
 
+.vscode/
 .spyproject/
 notes/
+sandbox/
+tmp/
 
-outputs/checkpoints/
-outputs/adapters/
+outputs/
 
 *.safetensors
 *.bin
